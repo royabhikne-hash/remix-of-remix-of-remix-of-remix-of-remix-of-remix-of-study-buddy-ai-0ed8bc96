@@ -128,16 +128,26 @@ const StudentDashboard = () => {
         
         // Only load sessions if approved
         if (student.is_approved) {
+          // Fetch sessions with quiz attempts to get actual scores
           const { data: sessions } = await supabase
             .from("study_sessions")
-            .select("*")
+            .select("*, quiz_attempts(accuracy_percentage)")
             .eq("student_id", student.id)
             .order("created_at", { ascending: false });
 
           if (sessions) {
             const totalTime = sessions.reduce((acc, s) => acc + (s.time_spent || 0), 0);
-            const avgScore = sessions.length > 0 
-              ? Math.round(sessions.reduce((acc, s) => acc + (s.improvement_score || 50), 0) / sessions.length)
+            
+            // Calculate average score using quiz accuracy when available
+            const scoresWithQuiz = sessions.map(s => {
+              const quizAttempts = s.quiz_attempts as { accuracy_percentage: number | null }[] | null;
+              if (quizAttempts && quizAttempts.length > 0 && quizAttempts[0].accuracy_percentage !== null) {
+                return quizAttempts[0].accuracy_percentage;
+              }
+              return s.improvement_score || 50;
+            });
+            const avgScore = scoresWithQuiz.length > 0 
+              ? Math.round(scoresWithQuiz.reduce((acc, s) => acc + s, 0) / scoresWithQuiz.length)
               : 50;
 
             const today = new Date().toDateString();
@@ -150,13 +160,21 @@ const StudentDashboard = () => {
               improvementScore: avgScore,
             });
 
-            const recent = sessions.slice(0, 5).map((s) => ({
-              id: s.id,
-              topic: s.topic || "General Study",
-              date: formatDate(new Date(s.created_at)),
-              duration: s.time_spent || 0,
-              score: s.improvement_score || 50,
-            }));
+            // Use quiz accuracy for score when available
+            const recent = sessions.slice(0, 5).map((s) => {
+              const quizAttempts = s.quiz_attempts as { accuracy_percentage: number | null }[] | null;
+              const score = (quizAttempts && quizAttempts.length > 0 && quizAttempts[0].accuracy_percentage !== null)
+                ? quizAttempts[0].accuracy_percentage
+                : s.improvement_score || 50;
+              
+              return {
+                id: s.id,
+                topic: s.topic || "General Study",
+                date: formatDate(new Date(s.created_at)),
+                duration: s.time_spent || 0,
+                score: Math.round(score),
+              };
+            });
             setRecentSessions(recent);
           }
         }

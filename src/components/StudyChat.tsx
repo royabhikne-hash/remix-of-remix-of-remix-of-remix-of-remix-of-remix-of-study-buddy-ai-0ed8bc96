@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Image, X, Loader2, Brain, TrendingUp, AlertTriangle, Volume2, VolumeX, CheckCircle, XCircle, ThumbsUp, HelpCircle, Lightbulb } from "lucide-react";
+import { Send, Image, X, Loader2, Brain, TrendingUp, AlertTriangle, Volume2, VolumeX, CheckCircle, XCircle, ThumbsUp, HelpCircle, Lightbulb, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,7 +133,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       };
     });
 
-    // Show feedback toast
     const reactionLabels: Record<ReactionType, string> = {
       like: "👍 Liked!",
       helpful: "💡 Marked as helpful!",
@@ -149,7 +148,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   // Text-to-Speech function
   const speakText = (text: string, messageId: string) => {
     if ('speechSynthesis' in window) {
-      // Stop any ongoing speech
       window.speechSynthesis.cancel();
       
       if (speakingMessageId === messageId) {
@@ -157,11 +155,10 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         return;
       }
 
-      // Clean text for speech (remove emojis and special chars)
       const cleanText = text.replace(/[🎉📚💪🤖👋✓✔❌⚠️🙏]/g, '').trim();
       
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'hi-IN'; // Hindi for Hinglish content
+      utterance.lang = 'hi-IN';
       utterance.rate = 0.9;
       utterance.pitch = 1;
       
@@ -220,10 +217,8 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     }
   };
 
-  // Current session ID for saving messages
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Save message to database
   const saveMessageToDb = async (message: ChatMessage, sessId: string) => {
     try {
       await supabase.from("chat_messages").insert({
@@ -237,7 +232,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     }
   };
 
-  // Create or get session on first user message
   const ensureSession = async (): Promise<string | null> => {
     if (sessionId) return sessionId;
     
@@ -287,7 +281,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       setCurrentTopic(foundTopic.charAt(0).toUpperCase() + foundTopic.slice(1));
     }
 
-    // Save user message to DB
     const sessId = await ensureSession();
     if (sessId) {
       await saveMessageToDb(userMessage, sessId);
@@ -304,7 +297,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     
     setMessages((prev) => [...prev, aiResponse]);
     
-    // Save AI response to DB
     if (sessId) {
       await saveMessageToDb(aiResponse, sessId);
     }
@@ -332,7 +324,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     }
   };
 
-  // Generate quiz when ending study
   const handleEndStudyClick = async () => {
     setQuizLoading(true);
     
@@ -353,7 +344,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         setCurrentQuestionIndex(0);
         setUserAnswers([]);
         
-        // Add quiz intro message
         const quizIntro: ChatMessage = {
           id: Date.now().toString(),
           role: "assistant",
@@ -362,7 +352,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         };
         setMessages(prev => [...prev, quizIntro]);
       } else {
-        // No quiz, end directly
         finishStudySession();
       }
     } catch (err) {
@@ -393,7 +382,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     if (currentQuestionIndex < quizQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      // Quiz complete, calculate results
       calculateQuizResults();
     }
   };
@@ -418,7 +406,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
 
     setShowResult(true);
 
-    // Add result message
     const resultMessage: ChatMessage = {
       id: Date.now().toString(),
       role: "assistant",
@@ -427,7 +414,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     };
     setMessages(prev => [...prev, resultMessage]);
 
-    // End session after showing result
     setTimeout(() => {
       onEndStudy({
         topic: currentTopic || "General Study",
@@ -475,60 +461,31 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     }
   };
 
-  const getUnderstandingColor = () => {
-    switch (analysis.currentUnderstanding) {
-      case "excellent": return "text-accent";
-      case "good": return "text-primary";
-      case "average": return "text-warning";
-      case "weak": return "text-destructive";
-      default: return "text-muted-foreground";
-    }
-  };
-
   const currentQuestion = quizQuestions[currentQuestionIndex];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] bg-gradient-to-b from-card to-background rounded-3xl border border-border/50 overflow-hidden shadow-xl">
-      {/* Chat Header - Modern Design */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border/30 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
-              <span className="text-xl">🤖</span>
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-accent rounded-full border-2 border-background animate-pulse"></div>
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-background">
+      {/* ChatGPT-style Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">AI Study Buddy</h3>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              {isQuizMode ? (
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 bg-warning rounded-full animate-pulse"></span>
-                  Quiz Mode: {currentQuestionIndex + 1}/{quizQuestions.length}
-                </span>
-              ) : currentTopic ? (
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 bg-accent rounded-full"></span>
-                  {currentTopic}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                  Ready to help!
-                </span>
-              )}
+            <h3 className="font-semibold text-foreground">AI Study Buddy</h3>
+            <p className="text-xs text-muted-foreground">
+              {isQuizMode ? `Quiz: ${currentQuestionIndex + 1}/${quizQuestions.length}` : currentTopic || "Ready to help!"}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button 
-            variant={showAnalysis ? "secondary" : "outline"} 
+            variant="ghost" 
             size="sm" 
             onClick={() => setShowAnalysis(!showAnalysis)}
-            className="hidden sm:flex rounded-xl border-border/50 hover:bg-primary/10"
+            className="text-muted-foreground hover:text-foreground"
           >
-            <Brain className="w-4 h-4 mr-1.5" />
-            Analysis
+            <Brain className="w-4 h-4" />
           </Button>
           {!isQuizMode && (
             <Button 
@@ -536,7 +493,6 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
               size="sm" 
               onClick={handleEndStudyClick}
               disabled={quizLoading}
-              className="rounded-xl shadow-lg shadow-destructive/20"
             >
               {quizLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "End Study"}
             </Button>
@@ -544,135 +500,120 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         </div>
       </div>
 
-      {/* Real-time Analysis Panel - Enhanced */}
+      {/* Analysis Panel */}
       {showAnalysis && (
-        <div className="px-5 py-4 bg-gradient-to-r from-muted/80 to-muted/40 border-b border-border/30 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Understanding:</span>
-              <span className={`font-bold text-sm capitalize px-3 py-1 rounded-full ${
-                analysis.currentUnderstanding === "excellent" ? "bg-accent/20 text-accent" :
-                analysis.currentUnderstanding === "good" ? "bg-primary/20 text-primary" :
-                analysis.currentUnderstanding === "average" ? "bg-warning/20 text-warning" :
-                "bg-destructive/20 text-destructive"
-              }`}>
-                {analysis.currentUnderstanding}
-              </span>
-            </div>
-            {analysis.topicsCovered.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted-foreground">Topics:</span>
-                {analysis.topicsCovered.slice(0, 3).map((topic, i) => (
-                  <span key={i} className="text-xs px-2.5 py-1 bg-primary/15 text-primary rounded-full font-medium">
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-4 mt-3 text-sm">
+        <div className="px-4 py-3 bg-muted/50 border-b border-border">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-muted-foreground">Understanding:</span>
+            <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
+              analysis.currentUnderstanding === "excellent" ? "bg-accent/20 text-accent" :
+              analysis.currentUnderstanding === "good" ? "bg-primary/20 text-primary" :
+              analysis.currentUnderstanding === "average" ? "bg-warning/20 text-warning" :
+              "bg-destructive/20 text-destructive"
+            }`}>
+              {analysis.currentUnderstanding}
+            </span>
             {analysis.strongAreas.length > 0 && (
-              <div className="flex items-center gap-1.5 text-accent bg-accent/10 px-3 py-1.5 rounded-full">
-                <TrendingUp className="w-4 h-4" />
-                <span className="font-medium">Strong:</span> {analysis.strongAreas.slice(0, 2).join(", ")}
-              </div>
+              <span className="text-accent flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> {analysis.strongAreas.slice(0, 2).join(", ")}
+              </span>
             )}
             {analysis.weakAreas.length > 0 && (
-              <div className="flex items-center gap-1.5 text-warning bg-warning/10 px-3 py-1.5 rounded-full">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="font-medium">Needs work:</span> {analysis.weakAreas.slice(0, 2).join(", ")}
-              </div>
+              <span className="text-warning flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {analysis.weakAreas.slice(0, 2).join(", ")}
+              </span>
             )}
           </div>
         </div>
       )}
 
-      {/* Messages Area - Enhanced */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth">
+      {/* ChatGPT-style Messages */}
+      <div className="flex-1 overflow-y-auto">
         {messages.map((message) => {
           const reactions = messageReactions[message.id];
+          const isUser = message.role === "user";
           
           return (
             <div
               key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
+              className={`py-6 px-4 ${isUser ? "bg-background" : "bg-muted/30"}`}
             >
-              <div className={`max-w-[85%] ${
-                message.role === "user" 
-                  ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-2xl rounded-br-md px-4 py-3 shadow-lg shadow-primary/20" 
-                  : "bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground rounded-2xl rounded-bl-md px-4 py-3 shadow-md border border-border/30"
-              } relative group`}>
-                {message.imageUrl && (
-                  <img
-                    src={message.imageUrl}
-                    alt="Uploaded"
-                    className="max-w-[200px] rounded-xl mb-2 shadow-md"
-                  />
-                )}
-                <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+              <div className="max-w-3xl mx-auto flex gap-4">
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                  isUser ? "bg-primary text-primary-foreground" : "bg-accent/20 text-accent"
+                }`}>
+                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                </div>
                 
-                {/* Message footer with time and actions */}
-                <div className="flex items-center justify-between mt-2 pt-1 border-t border-current/10">
-                  <span className="text-xs opacity-60">
-                    {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  {message.role === "assistant" && (
-                    <button
-                      onClick={() => speakText(message.content, message.id)}
-                      className="ml-2 p-1.5 rounded-full hover:bg-foreground/10 transition-all duration-200"
-                      title="Read aloud"
-                    >
-                      {speakingMessageId === message.id ? (
-                        <VolumeX className="w-4 h-4 text-primary animate-pulse" />
-                      ) : (
-                        <Volume2 className="w-4 h-4 opacity-60 hover:opacity-100" />
-                      )}
-                    </button>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm">
+                      {isUser ? "You" : "AI Study Buddy"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  
+                  {message.imageUrl && (
+                    <img
+                      src={message.imageUrl}
+                      alt="Uploaded"
+                      className="max-w-[200px] rounded-lg mb-2"
+                    />
+                  )}
+                  
+                  <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                    {message.content}
+                  </p>
+                  
+                  {/* AI message actions */}
+                  {!isUser && (
+                    <div className="flex items-center gap-1 mt-3">
+                      <button
+                        onClick={() => speakText(message.content, message.id)}
+                        className="p-1.5 rounded hover:bg-muted transition-colors"
+                        title="Read aloud"
+                      >
+                        {speakingMessageId === message.id ? (
+                          <VolumeX className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Volume2 className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                        )}
+                      </button>
+                      <div className="w-px h-4 bg-border mx-1" />
+                      <button
+                        onClick={() => handleReaction(message.id, "like")}
+                        className={`p-1.5 rounded transition-colors ${
+                          reactions?.like?.userReacted ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Like"
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleReaction(message.id, "helpful")}
+                        className={`p-1.5 rounded transition-colors ${
+                          reactions?.helpful?.userReacted ? "bg-accent/10 text-accent" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Helpful"
+                      >
+                        <Lightbulb className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleReaction(message.id, "confusing")}
+                        className={`p-1.5 rounded transition-colors ${
+                          reactions?.confusing?.userReacted ? "bg-warning/10 text-warning" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Confusing"
+                      >
+                        <HelpCircle className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                {/* Reactions for AI messages */}
-                {message.role === "assistant" && (
-                  <div className="flex items-center gap-1 mt-2 pt-2 border-t border-current/5">
-                    <span className="text-xs opacity-50 mr-1">React:</span>
-                    <button
-                      onClick={() => handleReaction(message.id, "like")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-200 ${
-                        reactions?.like?.userReacted 
-                          ? "bg-primary/20 text-primary" 
-                          : "hover:bg-foreground/10 opacity-60 hover:opacity-100"
-                      }`}
-                      title="Like"
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                      {reactions?.like?.count ? <span>{reactions.like.count}</span> : null}
-                    </button>
-                    <button
-                      onClick={() => handleReaction(message.id, "helpful")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-200 ${
-                        reactions?.helpful?.userReacted 
-                          ? "bg-accent/20 text-accent" 
-                          : "hover:bg-foreground/10 opacity-60 hover:opacity-100"
-                      }`}
-                      title="Helpful"
-                    >
-                      <Lightbulb className="w-3.5 h-3.5" />
-                      {reactions?.helpful?.count ? <span>{reactions.helpful.count}</span> : null}
-                    </button>
-                    <button
-                      onClick={() => handleReaction(message.id, "confusing")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-200 ${
-                        reactions?.confusing?.userReacted 
-                          ? "bg-warning/20 text-warning" 
-                          : "hover:bg-foreground/10 opacity-60 hover:opacity-100"
-                      }`}
-                      title="Confusing"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5" />
-                      {reactions?.confusing?.count ? <span>{reactions.confusing.count}</span> : null}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           );
@@ -680,127 +621,137 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         
         {/* Quiz Question UI */}
         {isQuizMode && currentQuestion && !showResult && (
-          <div className="animate-fade-in">
-            <div className="chat-bubble-ai">
-              <div className="mb-3">
-                <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                  Question {currentQuestionIndex + 1}/{quizQuestions.length}
-                </span>
-                <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full ml-2">
-                  {currentQuestion.difficulty}
-                </span>
+          <div className="py-6 px-4 bg-muted/30">
+            <div className="max-w-3xl mx-auto flex gap-4">
+              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20 text-accent">
+                <Bot className="w-4 h-4" />
               </div>
-              <p className="font-medium text-lg mb-4">{currentQuestion.question}</p>
-              
-              {currentQuestion.type === "mcq" && currentQuestion.options && (
-                <div className="space-y-2">
-                  {currentQuestion.options.map((option, idx) => {
-                    const isSelected = selectedOption === option;
-                    const isCorrect = option.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
-                    const showFeedback = showExplanation;
-                    
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => !showExplanation && handleQuizAnswer(option)}
-                        disabled={showExplanation}
-                        className={`w-full text-left p-3 rounded-xl border transition-all ${
-                          showFeedback
-                            ? isCorrect
-                              ? "bg-accent/20 border-accent"
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                    Question {currentQuestionIndex + 1}/{quizQuestions.length}
+                  </span>
+                  <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                    {currentQuestion.difficulty}
+                  </span>
+                </div>
+                <p className="font-medium text-lg mb-4">{currentQuestion.question}</p>
+                
+                {currentQuestion.type === "mcq" && currentQuestion.options && (
+                  <div className="space-y-2">
+                    {currentQuestion.options.map((option, idx) => {
+                      const isSelected = selectedOption === option;
+                      const isCorrect = option.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                      const showFeedback = showExplanation;
+                      
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => !showExplanation && handleQuizAnswer(option)}
+                          disabled={showExplanation}
+                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                            showFeedback
+                              ? isCorrect
+                                ? "bg-accent/20 border-accent"
+                                : isSelected
+                                  ? "bg-destructive/20 border-destructive"
+                                  : "bg-muted border-border"
                               : isSelected
-                                ? "bg-destructive/20 border-destructive"
-                                : "bg-muted border-border"
-                            : isSelected
-                              ? "bg-primary/20 border-primary"
-                              : "bg-muted/50 border-border hover:bg-muted"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{String.fromCharCode(65 + idx)}. {option}</span>
-                          {showFeedback && isCorrect && <CheckCircle className="w-5 h-5 text-accent" />}
-                          {showFeedback && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-destructive" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                                ? "bg-primary/20 border-primary"
+                                : "bg-card border-border hover:bg-muted"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{String.fromCharCode(65 + idx)}. {option}</span>
+                            {showFeedback && isCorrect && <CheckCircle className="w-5 h-5 text-accent" />}
+                            {showFeedback && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-destructive" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-              {currentQuestion.type === "true_false" && (
-                <div className="flex gap-3">
-                  {["True", "False"].map((option) => {
-                    const isSelected = selectedOption === option;
-                    const isCorrect = option.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
-                    const showFeedback = showExplanation;
-                    
-                    return (
-                      <button
-                        key={option}
-                        onClick={() => !showExplanation && handleQuizAnswer(option)}
-                        disabled={showExplanation}
-                        className={`flex-1 p-3 rounded-xl border transition-all ${
-                          showFeedback
-                            ? isCorrect
-                              ? "bg-accent/20 border-accent"
+                {currentQuestion.type === "true_false" && (
+                  <div className="flex gap-3">
+                    {["True", "False"].map((option) => {
+                      const isSelected = selectedOption === option;
+                      const isCorrect = option.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                      const showFeedback = showExplanation;
+                      
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => !showExplanation && handleQuizAnswer(option)}
+                          disabled={showExplanation}
+                          className={`flex-1 p-3 rounded-lg border transition-all ${
+                            showFeedback
+                              ? isCorrect
+                                ? "bg-accent/20 border-accent"
+                                : isSelected
+                                  ? "bg-destructive/20 border-destructive"
+                                  : "bg-muted border-border"
                               : isSelected
-                                ? "bg-destructive/20 border-destructive"
-                                : "bg-muted border-border"
-                            : isSelected
-                              ? "bg-primary/20 border-primary"
-                              : "bg-muted/50 border-border hover:bg-muted"
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                                ? "bg-primary/20 border-primary"
+                                : "bg-card border-border hover:bg-muted"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-              {(currentQuestion.type === "fill_blank" || currentQuestion.type === "short_answer") && !showExplanation && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Type your answer..."
-                    value={selectedOption || ""}
-                    onChange={(e) => setSelectedOption(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && selectedOption) {
-                        handleQuizAnswer(selectedOption);
-                      }
-                    }}
-                  />
-                  <Button onClick={() => selectedOption && handleQuizAnswer(selectedOption)} disabled={!selectedOption}>
-                    Submit
-                  </Button>
-                </div>
-              )}
+                {(currentQuestion.type === "fill_blank" || currentQuestion.type === "short_answer") && !showExplanation && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type your answer..."
+                      value={selectedOption || ""}
+                      onChange={(e) => setSelectedOption(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter" && selectedOption) {
+                          handleQuizAnswer(selectedOption);
+                        }
+                      }}
+                    />
+                    <Button onClick={() => selectedOption && handleQuizAnswer(selectedOption)} disabled={!selectedOption}>
+                      Submit
+                    </Button>
+                  </div>
+                )}
 
-              {showExplanation && (
-                <div className="mt-4 p-3 bg-muted rounded-xl">
-                  <p className="text-sm font-medium mb-1">Correct Answer: {currentQuestion.correct_answer}</p>
-                  <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
-                  <Button 
-                    className="mt-3 w-full" 
-                    onClick={handleNextQuestion}
-                  >
-                    {currentQuestionIndex < quizQuestions.length - 1 ? "Next Question" : "See Results"}
-                  </Button>
-                </div>
-              )}
+                {showExplanation && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium mb-1">Correct Answer: {currentQuestion.correct_answer}</p>
+                    <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
+                    <Button 
+                      className="mt-3 w-full" 
+                      onClick={handleNextQuestion}
+                    >
+                      {currentQuestionIndex < quizQuestions.length - 1 ? "Next Question" : "See Results"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
         
+        {/* Loading indicator */}
         {isLoading && (
-          <div className="flex justify-start animate-fade-in">
-            <div className="bg-gradient-to-br from-secondary to-secondary/80 rounded-2xl rounded-bl-md px-4 py-3 shadow-md border border-border/30 flex items-center gap-3">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "0ms"}}></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "150ms"}}></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "300ms"}}></div>
+          <div className="py-6 px-4 bg-muted/30">
+            <div className="max-w-3xl mx-auto flex gap-4">
+              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20 text-accent">
+                <Bot className="w-4 h-4" />
               </div>
-              <span className="text-sm text-muted-foreground">Typing...</span>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "0ms"}}></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "150ms"}}></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "300ms"}}></div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -808,64 +759,64 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Image Preview - Enhanced */}
+      {/* Image Preview */}
       {selectedImage && (
-        <div className="px-5 py-3 bg-gradient-to-r from-secondary/50 to-secondary/30 border-t border-border/30">
-          <div className="relative inline-block">
-            <img src={selectedImage} alt="Preview" className="h-24 rounded-xl shadow-md border border-border/50" />
-            <button
-              className="absolute -top-2 -right-2 w-7 h-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-              onClick={() => setSelectedImage(null)}
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="px-4 py-3 bg-muted/50 border-t border-border">
+          <div className="max-w-3xl mx-auto">
+            <div className="relative inline-block">
+              <img src={selectedImage} alt="Preview" className="h-20 rounded-lg" />
+              <button
+                className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                onClick={() => setSelectedImage(null)}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Input Area - Modern Design */}
+      {/* ChatGPT-style Input */}
       {!isQuizMode && (
-        <div className="p-4 border-t border-border/30 bg-gradient-to-r from-background via-secondary/20 to-background">
-          <div className="flex items-center gap-3 bg-muted/50 rounded-2xl p-2 border border-border/30 shadow-inner">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 rounded-xl hover:bg-primary/10"
-            >
-              <Image className="w-5 h-5 text-muted-foreground" />
-            </Button>
-            <Input
-              placeholder="Apna message type karo..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-              disabled={isLoading}
-            />
-            <Button
-              size="icon"
-              onClick={handleSendMessage}
-              disabled={isLoading || (!inputValue.trim() && !selectedImage)}
-              className="shrink-0 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 shadow-lg shadow-primary/25 disabled:opacity-40"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
+        <div className="border-t border-border bg-card p-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 bg-muted rounded-xl p-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Image className="w-5 h-5" />
+              </Button>
+              <Input
+                placeholder="Message AI Study Buddy..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                disabled={isLoading}
+              />
+              <Button
+                size="icon"
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() && !selectedImage}
+                className="shrink-0 rounded-lg"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              📷 Image upload kar sakte ho notes ya books ke liye
+            </p>
           </div>
-          <p className="text-xs text-center text-muted-foreground/60 mt-2">
-            Image upload kar sakte ho notes ya books ke liye 📸
-          </p>
         </div>
       )}
     </div>
