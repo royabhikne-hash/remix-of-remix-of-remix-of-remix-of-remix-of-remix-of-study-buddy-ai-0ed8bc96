@@ -156,34 +156,25 @@ const ChatHistory = ({ studentId, onClose }: ChatHistoryProps) => {
                   return (
                     <div
                       key={message.id}
-                      className={`py-6 px-4 ${isUser ? "bg-background" : "bg-muted/30"}`}
+                      className={`py-5 ${isUser ? "" : "bg-muted/20"}`}
                     >
-                      <div className="max-w-3xl mx-auto flex gap-4">
-                        <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                          isUser ? "bg-primary text-primary-foreground" : "bg-accent/20 text-accent"
+                      <div className="max-w-2xl mx-auto px-4 flex gap-3">
+                        <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${
+                          isUser 
+                            ? "bg-gradient-to-br from-primary/80 to-primary text-primary-foreground" 
+                            : "bg-gradient-to-br from-accent/80 to-accent text-accent-foreground"
                         }`}>
-                          {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                          {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">
-                              {isUser ? "You" : "AI Study Buddy"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(message.created_at).toLocaleTimeString([], { 
-                                hour: "2-digit", 
-                                minute: "2-digit" 
-                              })}
-                            </span>
-                          </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
                           {message.image_url && (
                             <img
                               src={message.image_url}
                               alt="Uploaded"
-                              className="max-w-[200px] rounded-lg mb-2"
+                              className="max-w-[180px] rounded-lg mb-2 shadow-sm"
                             />
                           )}
-                          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                          <p className="text-foreground whitespace-pre-wrap leading-relaxed text-[15px]">
                             {message.content}
                           </p>
                         </div>

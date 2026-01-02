@@ -495,17 +495,17 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   const currentQuestion = quizQuestions[currentQuestionIndex];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-background">
-      {/* ChatGPT-style Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+    <div className="flex flex-col h-[calc(100vh-60px)] bg-background">
+      {/* Minimal ChatGPT-style Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary" />
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <Bot className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">AI Study Buddy</h3>
+            <h3 className="font-semibold text-foreground text-sm">AI Study Buddy</h3>
             <p className="text-xs text-muted-foreground">
-              {isQuizMode ? `Quiz: ${currentQuestionIndex + 1}/${quizQuestions.length}` : currentTopic || "Ready to help!"}
+              {isQuizMode ? `Quiz ${currentQuestionIndex + 1}/${quizQuestions.length}` : currentTopic || "Online"}
             </p>
           </div>
         </div>
@@ -514,7 +514,7 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
             variant="ghost" 
             size="sm" 
             onClick={() => setShowAnalysis(!showAnalysis)}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
           >
             <Brain className="w-4 h-4" />
           </Button>
@@ -524,8 +524,9 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
               size="sm" 
               onClick={handleEndStudyClick}
               disabled={quizLoading}
+              className="h-8 px-3 text-xs"
             >
-              {quizLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "End Study"}
+              {quizLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "End"}
             </Button>
           )}
         </div>
@@ -652,21 +653,21 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         
         {/* Quiz Question UI */}
         {isQuizMode && currentQuestion && !showResult && (
-          <div className="py-6 px-4 bg-muted/30">
-            <div className="max-w-3xl mx-auto flex gap-4">
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20 text-accent">
-                <Bot className="w-4 h-4" />
+          <div className="py-5 bg-muted/20">
+            <div className="max-w-2xl mx-auto px-4 flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-accent/80 to-accent text-accent-foreground">
+                <Bot className="w-3.5 h-3.5" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                    Question {currentQuestionIndex + 1}/{quizQuestions.length}
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                    Q{currentQuestionIndex + 1}/{quizQuestions.length}
                   </span>
-                  <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                  <span className="text-xs text-muted-foreground">
                     {currentQuestion.difficulty}
                   </span>
                 </div>
-                <p className="font-medium text-lg mb-4">{currentQuestion.question}</p>
+                <p className="font-medium text-base mb-4">{currentQuestion.question}</p>
                 
                 {currentQuestion.type === "mcq" && currentQuestion.options && (
                   <div className="space-y-2">
@@ -680,22 +681,22 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                           key={idx}
                           onClick={() => !showExplanation && handleQuizAnswer(option)}
                           disabled={showExplanation}
-                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                          className={`w-full text-left p-3 rounded-xl border transition-all text-sm ${
                             showFeedback
                               ? isCorrect
-                                ? "bg-accent/20 border-accent"
+                                ? "bg-accent/10 border-accent"
                                 : isSelected
-                                  ? "bg-destructive/20 border-destructive"
-                                  : "bg-muted border-border"
+                                  ? "bg-destructive/10 border-destructive"
+                                  : "bg-muted/50 border-border"
                               : isSelected
-                                ? "bg-primary/20 border-primary"
-                                : "bg-card border-border hover:bg-muted"
+                                ? "bg-primary/10 border-primary"
+                                : "bg-background border-border hover:border-primary/50"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span>{String.fromCharCode(65 + idx)}. {option}</span>
-                            {showFeedback && isCorrect && <CheckCircle className="w-5 h-5 text-accent" />}
-                            {showFeedback && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-destructive" />}
+                            {showFeedback && isCorrect && <CheckCircle className="w-4 h-4 text-accent" />}
+                            {showFeedback && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-destructive" />}
                           </div>
                         </button>
                       );
@@ -704,7 +705,7 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                 )}
 
                 {currentQuestion.type === "true_false" && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     {["True", "False"].map((option) => {
                       const isSelected = selectedOption === option;
                       const isCorrect = option.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
@@ -715,16 +716,16 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                           key={option}
                           onClick={() => !showExplanation && handleQuizAnswer(option)}
                           disabled={showExplanation}
-                          className={`flex-1 p-3 rounded-lg border transition-all ${
+                          className={`flex-1 p-3 rounded-xl border transition-all text-sm ${
                             showFeedback
                               ? isCorrect
-                                ? "bg-accent/20 border-accent"
+                                ? "bg-accent/10 border-accent"
                                 : isSelected
-                                  ? "bg-destructive/20 border-destructive"
-                                  : "bg-muted border-border"
+                                  ? "bg-destructive/10 border-destructive"
+                                  : "bg-muted/50 border-border"
                               : isSelected
-                                ? "bg-primary/20 border-primary"
-                                : "bg-card border-border hover:bg-muted"
+                                ? "bg-primary/10 border-primary"
+                                : "bg-background border-border hover:border-primary/50"
                           }`}
                         >
                           {option}
@@ -745,22 +746,23 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                           handleQuizAnswer(selectedOption);
                         }
                       }}
+                      className="rounded-xl"
                     />
-                    <Button onClick={() => selectedOption && handleQuizAnswer(selectedOption)} disabled={!selectedOption}>
+                    <Button onClick={() => selectedOption && handleQuizAnswer(selectedOption)} disabled={!selectedOption} className="rounded-xl">
                       Submit
                     </Button>
                   </div>
                 )}
 
                 {showExplanation && (
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-1">Correct Answer: {currentQuestion.correct_answer}</p>
+                  <div className="mt-4 p-3 bg-muted/50 rounded-xl">
+                    <p className="text-sm font-medium mb-1">Answer: {currentQuestion.correct_answer}</p>
                     <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
                     <Button 
-                      className="mt-3 w-full" 
+                      className="mt-3 w-full rounded-xl" 
                       onClick={handleNextQuestion}
                     >
-                      {currentQuestionIndex < quizQuestions.length - 1 ? "Next Question" : "See Results"}
+                      {currentQuestionIndex < quizQuestions.length - 1 ? "Next" : "See Results"}
                     </Button>
                   </div>
                 )}
@@ -769,19 +771,17 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
           </div>
         )}
         
-        {/* Loading indicator */}
+        {/* Loading indicator - ChatGPT style */}
         {isLoading && (
-          <div className="py-6 px-4 bg-muted/30">
-            <div className="max-w-3xl mx-auto flex gap-4">
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20 text-accent">
-                <Bot className="w-4 h-4" />
+          <div className="py-5 bg-muted/20">
+            <div className="max-w-2xl mx-auto px-4 flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-accent/80 to-accent text-accent-foreground">
+                <Bot className="w-3.5 h-3.5" />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "0ms"}}></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "150ms"}}></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: "300ms"}}></div>
-                </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                <div className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full animate-bounce" style={{animationDelay: "0ms"}}></div>
+                <div className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full animate-bounce" style={{animationDelay: "150ms"}}></div>
+                <div className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full animate-bounce" style={{animationDelay: "300ms"}}></div>
               </div>
             </div>
           </div>
@@ -792,12 +792,12 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
 
       {/* Image Preview */}
       {selectedImage && (
-        <div className="px-4 py-3 bg-muted/50 border-t border-border">
-          <div className="max-w-3xl mx-auto">
+        <div className="px-4 py-2 bg-muted/30 border-t border-border/50">
+          <div className="max-w-2xl mx-auto">
             <div className="relative inline-block">
-              <img src={selectedImage} alt="Preview" className="h-20 rounded-lg" />
+              <img src={selectedImage} alt="Preview" className="h-16 rounded-lg shadow-sm" />
               <button
-                className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-sm"
                 onClick={() => setSelectedImage(null)}
               >
                 <X className="w-3 h-3" />
@@ -807,11 +807,11 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         </div>
       )}
 
-      {/* ChatGPT-style Input */}
+      {/* ChatGPT-style Input - Clean rounded pill */}
       {!isQuizMode && (
-        <div className="border-t border-border bg-card p-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-2 bg-muted rounded-xl p-2">
+        <div className="border-t border-border/50 bg-background p-3">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center gap-2 bg-muted/50 border border-border/50 rounded-full px-3 py-2 focus-within:border-primary/50 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -823,30 +823,27 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                 variant="ghost"
                 size="icon"
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 text-muted-foreground hover:text-foreground"
+                className="shrink-0 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
               >
-                <Image className="w-5 h-5" />
+                <Image className="w-4 h-4" />
               </Button>
               <Input
-                placeholder="Message AI Study Buddy..."
+                placeholder="Message..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-8 text-sm"
                 disabled={isLoading}
               />
               <Button
                 size="icon"
                 onClick={handleSendMessage}
                 disabled={!inputValue.trim() && !selectedImage}
-                className="shrink-0 rounded-lg"
+                className="shrink-0 h-8 w-8 rounded-full"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              📷 Image upload kar sakte ho notes ya books ke liye
-            </p>
           </div>
         </div>
       )}

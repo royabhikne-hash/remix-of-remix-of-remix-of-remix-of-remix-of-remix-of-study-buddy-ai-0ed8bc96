@@ -62,7 +62,7 @@ const StudentDashboard = () => {
   const [stats, setStats] = useState({
     todayStudied: false,
     totalSessions: 0,
-    totalMinutes: 0,
+    todayMinutes: 0, // Today's study time only
     improvementScore: 50,
   });
 
@@ -140,7 +140,10 @@ const StudentDashboard = () => {
             .order("created_at", { ascending: false });
 
           if (sessions) {
-            const totalTime = sessions.reduce((acc, s) => acc + (s.time_spent || 0), 0);
+            // Calculate TODAY's study time only
+            const today = new Date().toDateString();
+            const todaySessions = sessions.filter(s => new Date(s.created_at).toDateString() === today);
+            const todayTime = todaySessions.reduce((acc, s) => acc + (s.time_spent || 0), 0);
             
             // Calculate average score using quiz accuracy when available
             const scoresWithQuiz = sessions.map(s => {
@@ -154,13 +157,12 @@ const StudentDashboard = () => {
               ? Math.round(scoresWithQuiz.reduce((acc, s) => acc + s, 0) / scoresWithQuiz.length)
               : 50;
 
-            const today = new Date().toDateString();
-            const studiedToday = sessions.some(s => new Date(s.created_at).toDateString() === today);
+            const studiedToday = todaySessions.length > 0;
 
             setStats({
               todayStudied: studiedToday,
               totalSessions: sessions.length,
-              totalMinutes: totalTime,
+              todayMinutes: todayTime, // Today's time only
               improvementScore: avgScore,
             });
 
@@ -548,8 +550,8 @@ const StudentDashboard = () => {
           />
           <StatCard
             icon={<Clock className="w-5 h-5" />}
-            label="Total Time"
-            value={`${Math.round(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`}
+            label="Today's Time"
+            value={`${Math.floor(stats.todayMinutes / 60)}h ${stats.todayMinutes % 60}m`}
             color="primary"
           />
           <StatCard
