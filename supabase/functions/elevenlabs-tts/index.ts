@@ -22,8 +22,8 @@ serve(async (req) => {
       throw new Error("Text is required");
     }
 
-    // Use Sarah voice by default (natural female voice good for education)
-    const selectedVoice = voiceId || "EXAVITQu4vr4xnSDxMaL";
+    // Use George voice by default (natural male voice good for education)
+    const selectedVoice = voiceId || "JBFqnCBsd6RMkjVDRZzb";
 
     console.log("Generating TTS for text:", text.substring(0, 100) + "...");
 
