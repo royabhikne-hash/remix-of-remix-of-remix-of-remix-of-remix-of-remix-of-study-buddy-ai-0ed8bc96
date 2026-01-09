@@ -312,8 +312,8 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     });
   };
 
-  // ElevenLabs TTS for natural voice - fallback to Web Speech API
-  const speakText = async (text: string, messageId: string) => {
+  // Web Speech API for natural male Hindi voice
+  const speakText = (text: string, messageId: string) => {
     // If already speaking this message, stop
     if (speakingMessageId === messageId) {
       window.speechSynthesis.cancel();
@@ -331,55 +331,26 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     setSpeakingMessageId(messageId);
     
     try {
-      // Try ElevenLabs first for natural voice
-      const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
-        body: { text: cleanText }
-      });
-
-      if (error || data?.error) {
-        console.log("ElevenLabs failed, falling back to Web Speech API:", error || data?.error);
-        fallbackToWebSpeech(cleanText, messageId);
-        return;
-      }
-
-      if (data?.audioContent) {
-        const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setSpeakingMessageId(null);
-        };
-        
-        audio.onerror = () => {
-          console.log("Audio playback failed, falling back to Web Speech API");
-          fallbackToWebSpeech(cleanText, messageId);
-        };
-        
-        await audio.play();
-      } else {
-        fallbackToWebSpeech(cleanText, messageId);
-      }
-    } catch (error) {
-      console.error("TTS error:", error);
-      fallbackToWebSpeech(cleanText, messageId);
-    }
-  };
-
-  // Fallback to browser's Web Speech API
-  const fallbackToWebSpeech = (text: string, messageId: string) => {
-    try {
-      const utterance = new SpeechSynthesisUtterance(text);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'hi-IN';
       utterance.rate = voiceSpeed;
-      utterance.pitch = 1.0;
+      utterance.pitch = 0.9; // Slightly lower pitch for male voice
+      utterance.volume = 1.0;
       
       const voices = window.speechSynthesis.getVoices();
-      const hindiVoice = voices.find(v => v.lang.includes('hi') && v.name.toLowerCase().includes('male')) ||
-                         voices.find(v => v.lang.includes('hi')) ||
-                         voices.find(v => v.lang.includes('en-IN'));
       
-      if (hindiVoice) {
-        utterance.voice = hindiVoice;
+      // Prefer male Hindi voices for natural sound
+      const preferredVoice = 
+        voices.find(v => v.lang.includes('hi') && v.name.toLowerCase().includes('male')) ||
+        voices.find(v => v.lang === 'hi-IN' && !v.name.toLowerCase().includes('female')) ||
+        voices.find(v => v.lang.includes('hi-IN')) ||
+        voices.find(v => v.lang.includes('hi')) ||
+        voices.find(v => v.lang.includes('en-IN') && v.name.toLowerCase().includes('male')) ||
+        voices.find(v => v.lang.includes('en-IN'));
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+        console.log('Using voice:', preferredVoice.name, preferredVoice.lang);
       }
 
       utterance.onend = () => {
@@ -388,22 +359,12 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
 
       utterance.onerror = () => {
         setSpeakingMessageId(null);
-        toast({
-          title: "Audio Error",
-          description: "Could not play audio",
-          variant: "destructive"
-        });
       };
 
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.error("Web Speech TTS error:", error);
+      console.error("TTS error:", error);
       setSpeakingMessageId(null);
-      toast({
-        title: "Voice Error", 
-        description: "Could not generate voice. Try again.",
-        variant: "destructive"
-      });
     }
   };
 

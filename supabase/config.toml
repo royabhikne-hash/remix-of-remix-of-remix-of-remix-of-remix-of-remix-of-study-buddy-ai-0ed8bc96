@@ -15,8 +15,6 @@ verify_jwt = false
 [functions.send-weekly-report]
 verify_jwt = false
 
-[functions.elevenlabs-tts]
-verify_jwt = false
 
 [functions.secure-auth]
 verify_jwt = false
