@@ -46,7 +46,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import StudentReportModal from "@/components/StudentReportModal";
 import { useToast } from "@/hooks/use-toast";
-
+import LanguageToggle from "@/components/LanguageToggle";
+import { useLanguage } from "@/contexts/LanguageContext";
 interface StudentData {
   id: string;
   photo: string;
@@ -63,6 +64,7 @@ interface StudentData {
 const SchoolDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [schoolName, setSchoolName] = useState("School");
   const [schoolUuid, setSchoolUuid] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -561,7 +563,7 @@ const SchoolDashboard = () => {
           <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Building2 className="w-6 h-6 text-accent-foreground" />
           </div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+          <p className="text-muted-foreground">{t("school.dashboardLoading")}</p>
         </div>
       </div>
     );
@@ -575,15 +577,14 @@ const SchoolDashboard = () => {
           <div className="w-16 h-16 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold mb-4">Access Suspended</h1>
+          <h1 className="text-2xl font-bold mb-4">{t("school.accessSuspendedTitle")}</h1>
           <p className="text-muted-foreground mb-6">
-            Your school's dashboard access has been suspended due to unpaid fees. 
-            Please contact the admin to resolve this issue.
+            {t("school.accessSuspendedDesc")}
           </p>
           <div className="space-y-3">
             <Button variant="outline" className="w-full" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
-              Logout
+              {t("nav.logout")}
             </Button>
           </div>
         </div>
@@ -603,12 +604,15 @@ const SchoolDashboard = () => {
               </div>
               <div className="min-w-0">
                 <span className="font-bold text-sm sm:text-lg truncate block">{schoolName}</span>
-                <p className="text-xs text-muted-foreground hidden sm:block">School Dashboard</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">{t("school.dashboardTitle")}</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <LanguageToggle />
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -622,14 +626,14 @@ const SchoolDashboard = () => {
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <p className="text-xl sm:text-2xl font-bold">{stats.totalStudents}</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Approved</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("student.approved")}</p>
           </div>
           <div className="edu-card p-3 sm:p-4 text-center relative">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-warning/10 flex items-center justify-center mx-auto mb-2">
               <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
             </div>
             <p className="text-xl sm:text-2xl font-bold">{stats.pendingApprovals}</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Pending</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("student.pending")}</p>
             {stats.pendingApprovals > 0 && (
               <span className="absolute top-2 right-2 w-2 h-2 sm:w-3 sm:h-3 bg-warning rounded-full animate-pulse" />
             )}
@@ -639,14 +643,14 @@ const SchoolDashboard = () => {
               <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
             </div>
             <p className="text-xl sm:text-2xl font-bold">{stats.studiedToday}</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Today</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("school.today")}</p>
           </div>
           <div className="edu-card p-3 sm:p-4 text-center">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
               <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <p className="text-xl sm:text-2xl font-bold">{stats.improving}</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Improving</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("school.improving")}</p>
           </div>
         </div>
 
@@ -655,11 +659,11 @@ const SchoolDashboard = () => {
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="approved" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <UserCheck className="w-3 h-3 sm:w-4 sm:h-4" />
-              Approved ({approvedStudents.length})
+              {t("student.approved")} ({approvedStudents.length})
             </TabsTrigger>
             <TabsTrigger value="pending" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm relative">
               <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-              Pending ({pendingStudents.length})
+              {t("student.pending")} ({pendingStudents.length})
               {pendingStudents.length > 0 && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-warning rounded-full" />
               )}
@@ -674,10 +678,10 @@ const SchoolDashboard = () => {
                   <div>
                     <h2 className="font-bold flex items-center gap-2 text-sm sm:text-base">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
-                      Pending Student Approvals
+                      {t("school.pendingApprovalsTitle")}
                     </h2>
                     <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                      Review and approve students to allow them access.
+                      {t("school.pendingApprovalsDesc")}
                     </p>
                   </div>
                   
@@ -686,7 +690,7 @@ const SchoolDashboard = () => {
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedPendingIds.size > 0 && (
                         <span className="text-xs sm:text-sm text-muted-foreground">
-                          {selectedPendingIds.size} selected
+                          {selectedPendingIds.size} {t("school.selectedCount")}
                         </span>
                       )}
                       <Button
@@ -698,12 +702,12 @@ const SchoolDashboard = () => {
                         {selectedPendingIds.size === pendingStudents.length ? (
                           <>
                             <Square className="w-3 h-3 mr-1" />
-                            Deselect
+                            {t("school.deselect")}
                           </>
                         ) : (
                           <>
                             <CheckSquare className="w-3 h-3 mr-1" />
-                            Select All
+                            {t("school.selectAll")}
                           </>
                         )}
                       </Button>
@@ -720,7 +724,7 @@ const SchoolDashboard = () => {
                             ) : (
                               <>
                                 <UserCheck className="w-3 h-3 mr-1" />
-                                Approve All
+                                {t("school.approveAll")}
                               </>
                             )}
                           </Button>
@@ -732,7 +736,7 @@ const SchoolDashboard = () => {
                             className="text-destructive hover:text-destructive text-xs"
                           >
                             <UserX className="w-3 h-3 mr-1" />
-                            Reject All
+                            {t("school.rejectAll")}
                           </Button>
                         </>
                       )}
@@ -744,8 +748,8 @@ const SchoolDashboard = () => {
               {pendingStudents.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <UserCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No pending approvals!</p>
-                  <p className="text-sm">All students have been reviewed.</p>
+                  <p>{t("school.noPendingTitle")}</p>
+                  <p className="text-sm">{t("school.noPendingDesc")}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -833,7 +837,7 @@ const SchoolDashboard = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                 <Input
-                  placeholder="Search students..."
+                  placeholder={t("school.searchStudents")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 sm:pl-10 h-10 sm:h-12"
@@ -844,7 +848,7 @@ const SchoolDashboard = () => {
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
               >
-                <option value="all">All Classes</option>
+                <option value="all">{t("school.allClasses")}</option>
                 {uniqueClasses.map((cls) => (
                   <option key={cls} value={cls}>
                     {cls}
@@ -856,14 +860,14 @@ const SchoolDashboard = () => {
             {/* Student List */}
             <div className="edu-card overflow-hidden">
               <div className="p-3 sm:p-4 border-b border-border bg-secondary/30">
-                <h2 className="font-bold text-sm sm:text-base">Student Activity</h2>
+                <h2 className="font-bold text-sm sm:text-base">{t("school.studentActivity")}</h2>
               </div>
               
               {approvedStudents.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No approved students yet.</p>
-                  <p className="text-sm">Approve pending students to see them here.</p>
+                  <p>{t("school.noApprovedTitle")}</p>
+                  <p className="text-sm">{t("school.noApprovedDesc")}</p>
                 </div>
               ) : (
                 <>
@@ -872,13 +876,13 @@ const SchoolDashboard = () => {
                     <table className="w-full">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="text-left p-4 font-semibold">Student</th>
-                          <th className="text-left p-4 font-semibold">Class</th>
-                          <th className="text-left p-4 font-semibold">Today</th>
-                          <th className="text-left p-4 font-semibold">Topic Studied</th>
-                          <th className="text-left p-4 font-semibold">Trend</th>
-                          <th className="text-left p-4 font-semibold">Sessions</th>
-                          <th className="text-left p-4 font-semibold">Actions</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.student")}</th>
+                          <th className="text-left p-4 font-semibold">{t("student.class")}</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.today")}</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.topicStudied")}</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.trend")}</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.sessions")}</th>
+                          <th className="text-left p-4 font-semibold">{t("school.table.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -904,11 +908,11 @@ const SchoolDashboard = () => {
                             <td className="p-4">
                               {student.todayStudied ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent/10 text-accent text-sm">
-                                  <CheckCircle className="w-4 h-4" /> Yes
+                                  <CheckCircle className="w-4 h-4" /> {t("school.yes")}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted text-muted-foreground text-sm">
-                                  <XCircle className="w-4 h-4" /> No
+                                  <XCircle className="w-4 h-4" /> {t("school.no")}
                                 </span>
                               )}
                             </td>
@@ -924,7 +928,7 @@ const SchoolDashboard = () => {
                                   className="text-primary hover:text-primary/80"
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
-                                  View
+                                  {t("action.view")}
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -971,21 +975,21 @@ const SchoolDashboard = () => {
                           </div>
                           {student.todayStudied ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent/10 text-accent text-xs">
-                              <CheckCircle className="w-3 h-3" /> Studied
+                              <CheckCircle className="w-3 h-3" /> {t("school.studied")}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted text-muted-foreground text-xs">
-                              <XCircle className="w-3 h-3" /> Not Yet
+                              <XCircle className="w-3 h-3" /> {t("school.notYet")}
                             </span>
                           )}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm mb-3">
                           <div>
-                            <span className="text-muted-foreground">Topic: </span>
+                            <span className="text-muted-foreground">{t("school.topicLabel")}: </span>
                             <span className="truncate">{student.topicStudied}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Trend: </span>
+                            <span className="text-muted-foreground">{t("school.trendLabel")}: </span>
                             {getTrendLabel(student.improvementTrend)}
                           </div>
                         </div>
@@ -997,7 +1001,7 @@ const SchoolDashboard = () => {
                             className="flex-1 text-xs"
                           >
                             <Eye className="w-3 h-3 mr-1" />
-                            View Report
+                            {t("school.viewReport")}
                           </Button>
                           <Button
                             variant="outline"
@@ -1026,40 +1030,39 @@ const SchoolDashboard = () => {
       {/* Rejection Reason Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent className="max-w-sm sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Reject Student Registration</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              You are about to reject <strong>{rejectingStudent?.name}</strong>'s registration. 
-              Please provide a reason (optional):
-            </p>
+            <DialogHeader>
+              <DialogTitle className="text-base sm:text-lg">{t("school.rejectStudentTitle")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {t("school.rejectStudentDesc").replaceAll("{name}", rejectingStudent?.name ?? "")}
+              </p>
             <Textarea
-              placeholder="Enter reason for rejection (e.g., Invalid details, Not a student of this school, etc.)"
+              placeholder={t("school.rejectReasonPlaceholder")}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               rows={3}
               className="text-sm"
             />
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleRejectStudent}
-              disabled={approvingId === rejectingStudent?.id}
-              className="w-full sm:w-auto"
-            >
-              {approvingId === rejectingStudent?.id ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <UserX className="w-4 h-4 mr-2" />
-              )}
-              Reject Student
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setShowRejectDialog(false)} className="w-full sm:w-auto">
+                {t("action.cancel")}
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleRejectStudent}
+                disabled={approvingId === rejectingStudent?.id}
+                className="w-full sm:w-auto"
+              >
+                {approvingId === rejectingStudent?.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <UserX className="w-4 h-4 mr-2" />
+                )}
+                {t("action.reject")} {t("school.table.student")}
+              </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1067,15 +1070,16 @@ const SchoolDashboard = () => {
       <Dialog open={showBulkRejectDialog} onOpenChange={setShowBulkRejectDialog}>
         <DialogContent className="max-w-sm sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Reject {selectedPendingIds.size} Students</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              {t("school.rejectStudentsTitle").replaceAll("{count}", String(selectedPendingIds.size))}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-xs sm:text-sm text-muted-foreground">
-              You are about to reject <strong>{selectedPendingIds.size} students</strong>. 
-              Please provide a reason (optional):
+              {t("school.rejectStudentsDesc").replaceAll("{count}", String(selectedPendingIds.size))}
             </p>
             <Textarea
-              placeholder="Enter reason for rejection (e.g., Invalid details, Not students of this school, etc.)"
+              placeholder={t("school.rejectReasonPlaceholder")}
               value={bulkRejectionReason}
               onChange={(e) => setBulkRejectionReason(e.target.value)}
               rows={3}
@@ -1084,7 +1088,7 @@ const SchoolDashboard = () => {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowBulkRejectDialog(false)} className="w-full sm:w-auto">
-              Cancel
+              {t("action.cancel")}
             </Button>
             <Button 
               variant="destructive" 
@@ -1097,7 +1101,7 @@ const SchoolDashboard = () => {
               ) : (
                 <UserX className="w-4 h-4 mr-2" />
               )}
-              Reject All Selected
+              {t("school.rejectAllSelected")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1109,11 +1113,11 @@ const SchoolDashboard = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
-              Remove Student
+              {t("school.removeStudentTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm">
-              Are you sure you want to remove <strong>{deleteDialog.student?.name}</strong> from your school? 
-              This will permanently delete their account and all study data.
+              {t("school.removeStudentDesc")
+                .replaceAll("{name}", deleteDialog.student?.name ?? "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">

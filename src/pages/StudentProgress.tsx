@@ -22,6 +22,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import LanguageToggle from "@/components/LanguageToggle";
 import jsPDF from "jspdf";
 import { ProgressSkeleton } from "@/components/DashboardSkeleton";
 import {
@@ -73,6 +75,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#8b5cf6", "#f59e0b
 const StudentProgress = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { user, loading } = useAuth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [quizzes, setQuizzes] = useState<QuizAttempt[]>([]);
@@ -436,8 +439,8 @@ const StudentProgress = () => {
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast({
-        title: "Download Failed",
-        description: "Could not generate PDF. Please try again.",
+        title: t("progress.downloadFailedTitle"),
+        description: t("progress.downloadFailedDesc"),
         variant: "destructive",
       });
     } finally {
@@ -474,42 +477,43 @@ const StudentProgress = () => {
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Progress Report</h1>
-                  <p className="text-sm text-muted-foreground">{studentName} • Class {studentClass}</p>
+                  <h1 className="font-bold text-xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">{t("progress.title")}</h1>
+                  <p className="text-sm text-muted-foreground">{studentName} • {t("student.class")} {studentClass}</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              {/* Grade Badge */}
-              <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border/50">
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md"
-                  style={{ backgroundColor: gradeInfo.color }}
+              <div className="flex items-center gap-4">
+                <LanguageToggle />
+                {/* Grade Badge */}
+                <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-muted/50 to-muted/30 border border-border/50">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+                    style={{ backgroundColor: gradeInfo.color }}
+                  >
+                    {gradeInfo.grade}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("progress.overallGrade")}</p>
+                    <p className="font-semibold text-sm">{gradeInfo.label}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md"
                 >
-                  {gradeInfo.grade}
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Overall Grade</p>
-                  <p className="font-semibold text-sm">{gradeInfo.label}</p>
-                </div>
+                  {downloadingPdf ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      {t("progress.downloadPdf")}
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleDownloadPdf}
-                disabled={downloadingPdf}
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md"
-              >
-                {downloadingPdf ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
-            </div>
           </div>
         </div>
       </header>
@@ -525,7 +529,7 @@ const StudentProgress = () => {
               {gradeInfo.grade}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Overall Grade</p>
+              <p className="text-xs text-muted-foreground">{t("progress.overallGrade")}</p>
               <p className="font-bold text-lg">{gradeInfo.label}</p>
             </div>
           </div>
@@ -535,44 +539,44 @@ const StudentProgress = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
           <StatCard
             icon={<Calendar className="w-5 h-5" />}
-            label="Total Sessions"
+            label={t("progress.totalSessions")}
             value={stats.totalSessions.toString()}
             color="primary"
           />
           <StatCard
             icon={<Clock className="w-5 h-5" />}
-            label="Study Time"
+            label={t("progress.studyTime")}
             value={`${Math.floor(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`}
             color="accent"
           />
           <StatCard
             icon={<TrendingUp className="w-5 h-5" />}
-            label="Avg Score"
+            label={t("progress.avgScore")}
             value={`${stats.avgScore}%`}
             color="primary"
           />
           <StatCard
             icon={<Target className="w-5 h-5" />}
-            label="Consistency"
+            label={t("progress.consistency")}
             value={`${stats.consistency}%`}
             color="accent"
           />
           <StatCard
             icon={<Flame className="w-5 h-5" />}
-            label="Streak"
+            label={t("progress.streak")}
             value={`${stats.streak} days`}
             color="primary"
             highlight={stats.streak >= 3}
           />
           <StatCard
             icon={<Award className="w-5 h-5" />}
-            label="Quizzes"
+            label={t("progress.quizzes")}
             value={stats.totalQuizzes.toString()}
             color="accent"
           />
           <StatCard
             icon={<Zap className="w-5 h-5" />}
-            label="Quiz Accuracy"
+            label={t("progress.quizAccuracy")}
             value={`${stats.avgQuizAccuracy}%`}
             color="primary"
           />
@@ -584,7 +588,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6 lg:col-span-2">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
-              Improvement Over Time (Last 30 Days)
+              {t("progress.improvementOverTime")}
             </h3>
             {improvementData.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
@@ -616,12 +620,12 @@ const StudentProgress = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Start studying to see your progress!</p>
+                <div className="h-[280px] flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>{t("progress.startStudyingEmpty")}</p>
+                  </div>
                 </div>
-              </div>
             )}
           </div>
 
@@ -629,7 +633,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <Star className="w-5 h-5 text-primary" />
-              Skill Assessment
+              {t("progress.skillAssessment")}
             </h3>
             <ResponsiveContainer width="100%" height={280}>
               <RadarChart data={skillRadarData}>
@@ -661,7 +665,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary" />
-              Subject Performance
+              {t("progress.subjectPerformance")}
             </h3>
             {subjectData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
@@ -681,7 +685,7 @@ const StudentProgress = () => {
               </ResponsiveContainer>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-                No data available yet
+                {t("progress.noDataYet")}
               </div>
             )}
           </div>
@@ -690,7 +694,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
-              Weekly Comparison
+              {t("progress.weeklyComparison")}
             </h3>
             <ResponsiveContainer width="100%" height={250}>
               <ComposedChart data={weeklyData}>
@@ -716,7 +720,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" />
-              Weekly Study Pattern
+              {t("progress.weeklyStudyPattern")}
             </h3>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={patternData}>
@@ -743,7 +747,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              Understanding Levels
+              {t("progress.understandingLevels")}
             </h3>
             {understandingData.length > 0 ? (
               <div className="flex items-center gap-6">
@@ -789,7 +793,7 @@ const StudentProgress = () => {
               </div>
             ) : (
               <div className="h-[220px] flex items-center justify-center text-muted-foreground">
-                No data available yet
+                {t("progress.noDataYet")}
               </div>
             )}
           </div>
@@ -799,7 +803,7 @@ const StudentProgress = () => {
             <div className="edu-card p-6">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <Award className="w-5 h-5 text-primary" />
-                Recent Quiz Performance
+                {t("progress.recentQuizPerformance")}
               </h3>
               <div className="space-y-3">
                 {quizzes.slice(0, 5).map((quiz) => {
@@ -814,7 +818,7 @@ const StudentProgress = () => {
                           })}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {quiz.correct_count}/{quiz.total_questions} correct
+                          {quiz.correct_count}/{quiz.total_questions} {t("progress.correctLabel")}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -846,7 +850,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 text-accent flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
-              Strong Areas
+              {t("progress.strongAreas")}
             </h3>
             {areasAnalysis.strong.length > 0 ? (
               <div className="space-y-3">
@@ -864,7 +868,7 @@ const StudentProgress = () => {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">
-                Keep studying to identify your strengths!
+                {t("progress.keepStudyingStrengths")}
               </p>
             )}
           </div>
@@ -873,7 +877,7 @@ const StudentProgress = () => {
           <div className="edu-card p-6">
             <h3 className="font-bold text-lg mb-4 text-destructive flex items-center gap-2">
               <Target className="w-5 h-5" />
-              Areas to Improve
+              {t("progress.areasToImprove")}
             </h3>
             {areasAnalysis.weak.length > 0 ? (
               <div className="space-y-3">
@@ -891,7 +895,7 @@ const StudentProgress = () => {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">
-                Great job! No weak areas identified yet.
+                {t("progress.noWeakAreasYet")}
               </p>
             )}
           </div>
