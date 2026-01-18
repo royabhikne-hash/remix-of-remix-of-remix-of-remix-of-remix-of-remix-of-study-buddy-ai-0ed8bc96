@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
+
+const bcryptAny: any = bcrypt;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,10 +88,10 @@ function generateSecureCredentials(): { id: string; password: string } {
   return { id, password };
 }
 
-// Bcrypt password hashing
+// Bcrypt password hashing (bcryptjs - compatible with edge runtime)
 async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(12);
-  return await bcrypt.hash(password, salt);
+  const salt = bcryptAny.genSaltSync(12);
+  return bcryptAny.hashSync(password, salt);
 }
 
 // Legacy SHA-256 hash for migration (to check old passwords)
@@ -121,10 +123,10 @@ function secureCompare(a: string, b: string): boolean {
 async function verifyPassword(password: string, storedHash: string): Promise<{ valid: boolean; isLegacy: boolean; hashType: 'bcrypt' | 'sha256' | 'plaintext' }> {
   // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
   if (storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$') || storedHash.startsWith('$2y$')) {
-    const valid = await bcrypt.compare(password, storedHash);
+    const valid = !!bcryptAny.compareSync(password, storedHash);
     return { valid, isLegacy: false, hashType: 'bcrypt' };
   }
-  
+
   // Check if it's a SHA-256 hash (64 hex characters)
   if (/^[a-f0-9]{64}$/i.test(storedHash)) {
     const legacyHash = await legacyHashPassword(password);

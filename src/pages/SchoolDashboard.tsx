@@ -122,12 +122,18 @@ const SchoolDashboard = () => {
         return;
       }
 
-      // Check if school is banned or fee not paid (use public-safe view)
-      const { data: school } = await supabase
-        .from("schools_public")
-        .select("id, is_banned, fee_paid")
-        .eq("school_id", storedSchoolId)
-        .maybeSingle();
+      // Check if school is banned or fee not paid (via backend function)
+      const { data, error } = await supabase.functions.invoke("get-schools-public", {
+        body: { action: "by_school_id", school_id: storedSchoolId },
+      });
+
+      if (error || data?.error) {
+        console.error("School access check error:", error || data?.error);
+        setLoading(false);
+        return;
+      }
+
+      const school = data?.school as { id: string; is_banned: boolean | null; fee_paid: boolean | null } | null;
 
       if (!school) {
         setLoading(false);

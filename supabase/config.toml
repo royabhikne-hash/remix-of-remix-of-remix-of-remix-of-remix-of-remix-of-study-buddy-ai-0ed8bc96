@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.analyze-answer]
 verify_jwt = false
+
+[functions.get-schools-public]
+verify_jwt = false

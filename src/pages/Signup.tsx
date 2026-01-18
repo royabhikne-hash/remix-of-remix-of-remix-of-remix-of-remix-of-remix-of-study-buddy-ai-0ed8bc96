@@ -44,23 +44,22 @@ const Signup = () => {
   // Load schools on mount
   useEffect(() => {
     const loadSchools = async () => {
-      const { data, error } = await supabase
-        .from("schools_public")
-        .select("id, name, school_id")
-        .order("name");
+      const { data, error } = await supabase.functions.invoke("get-schools-public", {
+        body: { action: "list" },
+      });
 
-      if (error) {
-        console.error("Load schools error:", error);
+      if (error || data?.error) {
+        console.error("Load schools error:", error || data?.error);
         return;
       }
 
-      if (data) {
-        setSchools(data);
-        if (data.length > 0) {
-          setSelectedSchoolId(data[0].id);
-        }
+      const list = (data?.schools as School[]) ?? [];
+      setSchools(list);
+      if (list.length > 0) {
+        setSelectedSchoolId(list[0].id);
       }
     };
+
     loadSchools();
   }, []);
 
