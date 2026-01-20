@@ -56,34 +56,61 @@ serve(async (req) => {
     console.log("Generating adaptive quiz for topic:", topic);
     console.log("Student level:", studentLevel);
 
+    // Determine number of questions based on student level and session length
+    const messageCount = messages?.length || 0;
+    let questionCount = 10; // Default to 10 questions
+    
+    // Adaptive question count based on session engagement
+    if (messageCount >= 15) {
+      questionCount = 15; // Long session = more questions
+    } else if (messageCount >= 10) {
+      questionCount = 12;
+    } else if (messageCount >= 5) {
+      questionCount = 10;
+    } else {
+      questionCount = 8; // Short session = fewer questions
+    }
+
     // Build context from chat messages (limited) - extract topics discussed
     const chatContext = messages
       ?.filter((m: ChatMessage) => m.role === "user" || m.role === "assistant")
-      .slice(-6)
+      .slice(-10)
       .map((m: ChatMessage) => `${m.role}: ${m.content}`)
       .join("\n")
-      .slice(-3000);
+      .slice(-4000);
 
     const weakAreasText = weakAreas?.length > 0 ? weakAreas.join(", ") : "None identified";
     const strongAreasText = strongAreas?.length > 0 ? strongAreas.join(", ") : "None identified";
 
-    // Enhanced prompt for topic-focused quiz generation
-    const systemPrompt = `You are a quiz generator for Indian students studying "${topic || 'General Study'}".
+    // Enhanced prompt for adaptive topic-focused quiz generation
+    const systemPrompt = `You are an adaptive quiz generator for Indian students studying "${topic || 'General Study'}".
 
 CRITICAL RULES:
-1. Generate EXACTLY 5 questions
+1. Generate EXACTLY ${questionCount} questions (adaptive based on study session)
 2. ALL questions MUST be about "${topic || 'General Study'}" ONLY
 3. DO NOT include questions from other subjects
 4. If topic is Physics, ask ONLY Physics questions
 5. If topic is Biology, ask ONLY Biology questions
 6. Questions should be based on what was discussed in the study session
 7. Use simple Hinglish (Hindi-English mix)
-8. Number questions from 1 to 5 correctly
+8. Number questions from 1 to ${questionCount} correctly
+
+ADAPTIVE DIFFICULTY:
+- Student level: ${studentLevel || 'average'}
+- If weak: Start with easy questions, gradually increase difficulty
+- If average: Mix of easy and medium questions
+- If good/excellent: Include more medium and hard questions
+- Focus MORE on weak areas: ${weakAreasText}
+- Build confidence with strong areas: ${strongAreasText}
+
+QUESTION DISTRIBUTION (for ${questionCount} questions):
+- 40% Easy questions (basic concepts)
+- 40% Medium questions (application-based)
+- 20% Hard questions (conceptual/analytical)
 
 QUESTION TYPES:
 - Mix of MCQ (4 options) and True/False
-- Focus on weak areas: ${weakAreasText}
-- Build confidence with strong areas: ${strongAreasText}
+- MCQ should be 70%, True/False should be 30%
 
 OUTPUT FORMAT (strictly JSON):
 {
@@ -109,16 +136,16 @@ OUTPUT FORMAT (strictly JSON):
       "topic": "${topic}"
     }
   ],
-  "total_questions": 5
+  "total_questions": ${questionCount}
 }
 
-STUDY SESSION CONTEXT (use this to create relevant questions):
+STUDY SESSION CONTEXT (use this to create RELEVANT questions based on what was actually studied):
 ${chatContext || `General study session about ${topic || "various topics"}`}`;
 
     // Use fastest model
     const MODEL = "google/gemini-2.5-flash";
 
-    console.log(`Calling Lovable AI for quiz with model: ${MODEL}`);
+    console.log(`Calling Lovable AI for adaptive quiz with model: ${MODEL}, questions: ${questionCount}`);
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -130,9 +157,9 @@ ${chatContext || `General study session about ${topic || "various topics"}`}`;
         model: MODEL,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate 5 quiz questions for "${topic || 'General Study'}". Student level: ${studentLevel || 'average'}.` }
+          { role: "user", content: `Generate exactly ${questionCount} adaptive quiz questions for "${topic || 'General Study'}". Student level: ${studentLevel || 'average'}. Create questions ONLY from the study session content provided. Make questions progressively harder.` }
         ],
-        max_tokens: 1500,
+        max_tokens: 3500,
       }),
     });
 
@@ -187,61 +214,21 @@ ${chatContext || `General study session about ${topic || "various topics"}`}`;
       }
     } catch (e) {
       console.error("Failed to parse quiz JSON:", e);
-      // Generate fallback questions with proper IDs
+      // Generate fallback questions with proper IDs (10 questions minimum)
       quizData = {
         questions: [
-          {
-            id: 1,
-            type: "mcq",
-            question: `${topic || "Is session"} mein sabse important concept kya tha?`,
-            options: ["Option A", "Option B", "Option C", "Option D"],
-            correct_answer: "Option A",
-            explanation: "Ye session ka main concept hai.",
-            difficulty: "medium",
-            topic: topic || "General"
-          },
-          {
-            id: 2,
-            type: "true_false",
-            question: `${topic || "Is topic"} ke concepts clear hain?`,
-            options: ["True", "False"],
-            correct_answer: "True",
-            explanation: "Practice se samajh aur better hogi!",
-            difficulty: "easy",
-            topic: topic || "General"
-          },
-          {
-            id: 3,
-            type: "mcq",
-            question: `${topic || "Padhai"} mein konsa part sabse important hai?`,
-            options: ["Basics", "Practice", "Revision", "All of these"],
-            correct_answer: "All of these",
-            explanation: "Sab important hain padhai mein!",
-            difficulty: "easy",
-            topic: topic || "General"
-          },
-          {
-            id: 4,
-            type: "true_false",
-            question: "Regular practice se improvement hoti hai?",
-            options: ["True", "False"],
-            correct_answer: "True",
-            explanation: "Haan, daily practice bahut zaroori hai!",
-            difficulty: "easy",
-            topic: topic || "General"
-          },
-          {
-            id: 5,
-            type: "mcq",
-            question: "Notes banana kab helpful hota hai?",
-            options: ["Class mein", "Revision mein", "Exam mein", "Har jagah"],
-            correct_answer: "Har jagah",
-            explanation: "Notes har jagah kaam aate hain!",
-            difficulty: "easy",
-            topic: topic || "General"
-          }
+          { id: 1, type: "mcq", question: `${topic || "Is session"} mein sabse important concept kya tha?`, options: ["Basics", "Advanced", "Theory", "Practice"], correct_answer: "Basics", explanation: "Basics sabse pehle samjho.", difficulty: "easy", topic: topic || "General" },
+          { id: 2, type: "true_false", question: `${topic || "Is topic"} ke concepts clear hain?`, options: ["True", "False"], correct_answer: "True", explanation: "Practice se samajh aur better hogi!", difficulty: "easy", topic: topic || "General" },
+          { id: 3, type: "mcq", question: `${topic || "Padhai"} mein konsa part sabse important hai?`, options: ["Basics", "Practice", "Revision", "All of these"], correct_answer: "All of these", explanation: "Sab important hain padhai mein!", difficulty: "easy", topic: topic || "General" },
+          { id: 4, type: "true_false", question: "Regular practice se improvement hoti hai?", options: ["True", "False"], correct_answer: "True", explanation: "Haan, daily practice bahut zaroori hai!", difficulty: "easy", topic: topic || "General" },
+          { id: 5, type: "mcq", question: "Notes banana kab helpful hota hai?", options: ["Class mein", "Revision mein", "Exam mein", "Har jagah"], correct_answer: "Har jagah", explanation: "Notes har jagah kaam aate hain!", difficulty: "medium", topic: topic || "General" },
+          { id: 6, type: "true_false", question: "Concepts samajhna rote learning se better hai?", options: ["True", "False"], correct_answer: "True", explanation: "Concepts samajhne se long-term memory banti hai.", difficulty: "medium", topic: topic || "General" },
+          { id: 7, type: "mcq", question: "Effective study ke liye kya zaroori hai?", options: ["Focus", "Time management", "Regular breaks", "All of these"], correct_answer: "All of these", explanation: "Ye sab cheezein effective study ke liye zaroori hain!", difficulty: "medium", topic: topic || "General" },
+          { id: 8, type: "true_false", question: "Revision ke bina padhai incomplete hai?", options: ["True", "False"], correct_answer: "True", explanation: "Revision se concepts permanent memory mein jaate hain.", difficulty: "medium", topic: topic || "General" },
+          { id: 9, type: "mcq", question: "Exam preparation kab start karni chahiye?", options: ["Last week", "Last month", "Throughout the year", "Night before"], correct_answer: "Throughout the year", explanation: "Consistent study best results deti hai!", difficulty: "hard", topic: topic || "General" },
+          { id: 10, type: "true_false", question: "Self-testing memory ko improve karta hai?", options: ["True", "False"], correct_answer: "True", explanation: "Active recall memory ko strong banata hai!", difficulty: "hard", topic: topic || "General" }
         ],
-        total_questions: 5
+        total_questions: 10
       };
     }
 

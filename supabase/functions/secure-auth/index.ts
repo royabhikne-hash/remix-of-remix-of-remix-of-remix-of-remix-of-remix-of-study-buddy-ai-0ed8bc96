@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, userType, identifier, password, newPassword, schoolData, adminCredentials, sessionToken } = await req.json();
+    const { action, userType, identifier, password, newPassword, schoolData, adminCredentials, sessionToken, adminName, secretKey } = await req.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -669,6 +669,58 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, newPassword }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else if (action === "create_admin") {
+      // Special action to bootstrap admin (only works if no admins exist)
+      const adminId = identifier;
+      const adminPassword = password;
+      // Check if any admin already exists
+      const { data: existingAdmins } = await supabase
+        .from("admins")
+        .select("id")
+        .limit(1);
+      
+      // Allow creation if no admins exist or if secret key matches
+      const BOOTSTRAP_KEY = Deno.env.get("ADMIN_BOOTSTRAP_KEY") || "edu_improvement_bootstrap_2024";
+      const isBootstrap = !existingAdmins || existingAdmins.length === 0;
+      const hasValidKey = secretKey === BOOTSTRAP_KEY;
+      
+      if (!isBootstrap && !hasValidKey) {
+        return new Response(
+          JSON.stringify({ error: "Admin creation not allowed" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const hashedPassword = await hashPassword(adminPassword);
+
+      const { data: newAdmin, error } = await supabase
+        .from("admins")
+        .insert({
+          admin_id: adminId,
+          password_hash: hashedPassword,
+          name: adminName || "Super Admin",
+          role: "super_admin",
+          password_reset_required: false,
+          password_updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Create admin error:", error);
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          admin: { id: newAdmin.id, adminId: newAdmin.admin_id, name: newAdmin.name }
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
