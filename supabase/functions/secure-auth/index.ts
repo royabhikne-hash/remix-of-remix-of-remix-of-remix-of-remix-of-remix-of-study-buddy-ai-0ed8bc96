@@ -8,8 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Session token expiration: 24 hours
-const SESSION_EXPIRY_HOURS = 24;
+// Session token expiration: 60 days (for persistent login)
+const SESSION_EXPIRY_DAYS = 60;
+const SESSION_EXPIRY_HOURS = SESSION_EXPIRY_DAYS * 24;
 
 // Simple in-memory rate limiting (resets on function cold start)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number; blockedUntil: number }>();

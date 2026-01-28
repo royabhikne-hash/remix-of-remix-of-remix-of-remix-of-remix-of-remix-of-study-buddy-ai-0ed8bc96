@@ -331,6 +331,14 @@ const StudentDashboard = () => {
   };
 
   const handleStartStudy = () => {
+    if (isApproved === false) {
+      toast({
+        title: "Approval Pending",
+        description: "Aapka account abhi approve nahi hua. Please wait!",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsStudying(true);
     toast({
       title: "Study Session Started! 📚",
@@ -587,9 +595,11 @@ const StudentDashboard = () => {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-                <BookOpen className="w-4 h-4 sm:w-6 sm:h-6 text-primary-foreground" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Study Buddy AI" 
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex-shrink-0 object-contain"
+              />
               <div className="min-w-0">
                 <span className="font-bold text-sm sm:text-lg truncate block">{t('app.name')}</span>
                 <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{t('nav.dashboard')}</p>
@@ -598,12 +608,25 @@ const StudentDashboard = () => {
             <div className="flex items-center gap-1 sm:gap-3">
               <LanguageToggle />
               <ThemeToggle />
-              <div className="hidden sm:flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => navigate("/profile")}
+                className="sm:hidden"
+              >
+                <User className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate("/profile")}
+                className="hidden sm:flex items-center gap-2"
+              >
                 <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                   <User className="w-4 h-4" />
                 </div>
                 <span className="font-medium">{userName}</span>
-              </div>
+              </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>

@@ -163,9 +163,11 @@ const SchoolLogin = () => {
         <div className="w-full max-w-md">
           <div className="edu-card p-4 sm:p-6 md:p-8">
             <div className="text-center mb-6 sm:mb-8">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-accent-foreground" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Study Buddy AI" 
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl mx-auto mb-3 sm:mb-4 object-contain"
+              />
               <h1 className="text-xl sm:text-2xl font-bold">{t('auth.schoolLogin')}</h1>
               <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">Access your school dashboard</p>
             </div>

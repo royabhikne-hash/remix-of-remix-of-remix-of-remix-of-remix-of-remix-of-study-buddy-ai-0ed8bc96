@@ -1,14 +1,35 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BookOpen, Users, GraduationCap, MessageCircle, TrendingUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const Landing = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { user, loading } = useAuth();
+
+  // Auto-redirect logged-in users to their dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      // Check if there's a student profile
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
+
+  // Show nothing while checking auth (prevents flash)
+  if (loading) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+          <BookOpen className="w-6 h-6 text-primary-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen hero-gradient">
@@ -132,15 +153,18 @@ const Landing = () => {
   );
 };
 
-const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
-  <div className="edu-card p-6 text-center hover:-translate-y-1 transition-transform duration-200">
-    <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-4 text-primary">
-      {icon}
+const FeatureCard = React.forwardRef<HTMLDivElement, { icon: React.ReactNode; title: string; description: string }>(
+  ({ icon, title, description }, ref) => (
+    <div ref={ref} className="edu-card p-6 text-center hover:-translate-y-1 transition-transform duration-200">
+      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-4 text-primary">
+        {icon}
+      </div>
+      <h3 className="text-lg font-bold mb-2">{title}</h3>
+      <p className="text-muted-foreground text-sm">{description}</p>
     </div>
-    <h3 className="text-lg font-bold mb-2">{title}</h3>
-    <p className="text-muted-foreground text-sm">{description}</p>
-  </div>
+  )
 );
+FeatureCard.displayName = "FeatureCard";
 
 const StepCard = React.forwardRef<HTMLDivElement, { step: number; title: string; description: string }>(
   ({ step, title, description }, ref) => (
