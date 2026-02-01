@@ -337,9 +337,14 @@ const StudentDashboard = () => {
     try {
       navigate("/study");
     } catch (err) {
-      console.error("Router navigation error, using location fallback:", err);
-      // Fallback: force location change (works in all WebViews)
-      window.location.href = "/study";
+      console.error("Router navigation error, using SPA history fallback:", err);
+      // Fallback: keep it INTERNAL (no full reload) for WebView/PWA/APK
+      try {
+        window.history.pushState({}, "", "/study");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } catch (fallbackErr) {
+        console.error("History fallback failed:", fallbackErr);
+      }
     }
   }, [isApproved, toast, navigate]);
 

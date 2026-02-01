@@ -121,6 +121,10 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
   const [autoSpeak, setAutoSpeak] = useState(true); // Auto-speak enabled by default
+
+  // WebView-safe: some Android WebViews/APK wrappers don't support TTS at all.
+  const [ttsSupported, setTtsSupported] = useState(false);
+  const ttsWarnedRef = useRef(false);
   
   // Quiz mode state
   const [isQuizMode, setIsQuizMode] = useState(false);
@@ -157,8 +161,23 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Detect TTS support once
+  useEffect(() => {
+    const supported =
+      typeof window !== "undefined" &&
+      typeof window.speechSynthesis !== "undefined" &&
+      typeof SpeechSynthesisUtterance !== "undefined";
+
+    setTtsSupported(supported);
+    if (!supported) {
+      // Prevent startup crash/blank screen in WebViews
+      setAutoSpeak(false);
+    }
+  }, []);
+
   // Auto-speak welcome greeting when chatbot first opens
   useEffect(() => {
+    if (!ttsSupported) return;
     if (!hasPlayedWelcome && autoSpeak && messages.length === 1) {
       const timer = setTimeout(() => {
         speakText(messages[0].content, messages[0].id);
@@ -166,22 +185,36 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [hasPlayedWelcome, autoSpeak]);
+  }, [hasPlayedWelcome, autoSpeak, messages, ttsSupported]);
 
   // Load voices when available
   useEffect(() => {
+    if (!ttsSupported) return;
+
     const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+      try {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+      } catch (err) {
+        console.warn("TTS voices load failed:", err);
+      }
     };
     
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    try {
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    } catch (err) {
+      console.warn("TTS setup failed:", err);
+    }
     
     return () => {
-      window.speechSynthesis.onvoiceschanged = null;
+      try {
+        window.speechSynthesis.onvoiceschanged = null;
+      } catch {
+        // ignore
+      }
     };
-  }, []);
+  }, [ttsSupported]);
 
   // Check for speech recognition support
   useEffect(() => {
@@ -244,7 +277,13 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       setIsListening(false);
     } else {
       // Stop any ongoing speech first
-      window.speechSynthesis.cancel();
+      if (ttsSupported) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // ignore
+        }
+      }
       setSpeakingMessageId(null);
       
       setInputValue('');
@@ -314,15 +353,34 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
 
   // Enhanced Web Speech API for natural Hindi voice with better quality
   const speakText = (text: string, messageId: string, isQuizQuestion: boolean = false) => {
+    if (!ttsSupported) {
+      if (!ttsWarnedRef.current) {
+        ttsWarnedRef.current = true;
+        toast({
+          title: "Voice support nahi hai",
+          description: "Aapke app/webview me Text-to-Speech available nahi hai, isliye voice auto-off kar diya.",
+        });
+      }
+      return;
+    }
+
     // If already speaking this message, stop
     if (speakingMessageId === messageId) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // ignore
+      }
       setSpeakingMessageId(null);
       return;
     }
 
     // Stop any ongoing speech
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // ignore
+    }
 
     // Clean text and handle Hinglish better
     let cleanText = text
@@ -350,7 +408,12 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
       
-      const voices = window.speechSynthesis.getVoices();
+      let voices: SpeechSynthesisVoice[] = [];
+      try {
+        voices = window.speechSynthesis.getVoices();
+      } catch (err) {
+        console.warn("TTS getVoices failed:", err);
+      }
       
       // Priority order for voice selection - PREFER MALE VOICES
       // Look for male voices explicitly first
@@ -385,7 +448,12 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
 
       // Small delay for better audio quality
       setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.error("TTS speak failed:", err);
+          setSpeakingMessageId(null);
+        }
       }, 50);
     } catch (error) {
       console.error("TTS error:", error);

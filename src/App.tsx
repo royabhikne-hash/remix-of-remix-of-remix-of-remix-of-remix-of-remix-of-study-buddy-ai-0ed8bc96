@@ -22,6 +22,8 @@ import SchoolsDirectory from "./pages/SchoolsDirectory";
 import StudentProfile from "./pages/StudentProfile";
 import StudyPage from "./pages/StudyPage";
 import NotFound from "./pages/NotFound";
+import AppErrorBoundary from "@/components/AppErrorBoundary";
+import GlobalErrorHandlers from "@/components/GlobalErrorHandlers";
 
 const queryClient = new QueryClient();
 
@@ -33,26 +35,29 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/schools" element={<SchoolsDirectory />} />
-                <Route path="/school-login" element={<SchoolLogin />} />
-                <Route path="/admin-login" element={<AdminLogin />} />
-                <Route path="/dashboard" element={<StudentDashboard />} />
-                <Route path="/progress" element={<StudentProgress />} />
-                <Route path="/profile" element={<StudentProfile />} />
-                <Route path="/study" element={<StudyPage />} />
-                <Route path="/school-dashboard" element={<SchoolDashboard />} />
-                <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                <Route path="/terms" element={<TermsConditions />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
+            <GlobalErrorHandlers />
+            <AppErrorBoundary>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/schools" element={<SchoolsDirectory />} />
+                  <Route path="/school-login" element={<SchoolLogin />} />
+                  <Route path="/admin-login" element={<AdminLogin />} />
+                  <Route path="/dashboard" element={<StudentDashboard />} />
+                  <Route path="/progress" element={<StudentProgress />} />
+                  <Route path="/profile" element={<StudentProfile />} />
+                  <Route path="/study" element={<StudyPage />} />
+                  <Route path="/school-dashboard" element={<SchoolDashboard />} />
+                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                  <Route path="/terms" element={<TermsConditions />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </AppErrorBoundary>
           </TooltipProvider>
         </AuthProvider>
       </LanguageProvider>
