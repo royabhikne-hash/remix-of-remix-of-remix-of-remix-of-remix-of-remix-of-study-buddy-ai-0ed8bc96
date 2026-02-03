@@ -78,29 +78,49 @@ export const useNativeTTS = () => {
       return null;
     }
 
-    // Priority order for Hindi/Indian English
-    // 1. Hindi voices
+    // Log all available voices for debugging
+    console.log('TTS: Available voices:', voices.map(v => `${v.name} (${v.lang})`).join(', '));
+
+    // Priority order - HINDI FIRST!
+    // 1. Look for specific Hindi male voices (preferred for study buddy)
+    const hindiMaleNames = ['Madhur', 'Hemant', 'Prabhat', 'Hindi India Male', 'Google हिन्दी', 'Microsoft Madhur'];
+    const hindiMaleVoice = voices.find(v => 
+      v.lang === 'hi-IN' && hindiMaleNames.some(name => v.name.toLowerCase().includes(name.toLowerCase()))
+    );
+    if (hindiMaleVoice) {
+      console.log('TTS: Using Hindi male voice:', hindiMaleVoice.name);
+      return hindiMaleVoice;
+    }
+
+    // 2. Any Hindi voice (hi-IN)
     const hindiVoice = voices.find(v => v.lang === 'hi-IN');
     if (hindiVoice) {
       console.log('TTS: Using Hindi voice:', hindiVoice.name);
       return hindiVoice;
     }
+
+    // 3. Hindi voice with different locale codes
+    const hindiAnyLocale = voices.find(v => v.lang.startsWith('hi'));
+    if (hindiAnyLocale) {
+      console.log('TTS: Using Hindi (any locale) voice:', hindiAnyLocale.name);
+      return hindiAnyLocale;
+    }
     
-    // 2. Indian English
+    // 4. Indian English as fallback
     const indianEnglish = voices.find(v => v.lang === 'en-IN');
     if (indianEnglish) {
       console.log('TTS: Using Indian English voice:', indianEnglish.name);
       return indianEnglish;
     }
     
-    // 3. Any English voice
+    // 5. Any English voice (last resort)
     const englishVoice = voices.find(v => v.lang.startsWith('en'));
     if (englishVoice) {
-      console.log('TTS: Using English voice:', englishVoice.name);
+      console.log('TTS: Fallback to English voice:', englishVoice.name);
       return englishVoice;
     }
     
-    // 4. Default to first available voice
+    // 6. Default to first available voice
     console.log('TTS: Using default voice:', voices[0]?.name);
     return voices[0] || null;
   }, [availableVoices]);
