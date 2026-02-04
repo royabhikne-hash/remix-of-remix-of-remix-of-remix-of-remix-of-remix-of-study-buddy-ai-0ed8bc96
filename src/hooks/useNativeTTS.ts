@@ -25,11 +25,22 @@ export const useNativeTTS = () => {
   const chunksRef = useRef<string[]>([]);
   const currentChunkIndexRef = useRef(0);
   const isCancelledRef = useRef(false);
+  const isWebViewRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       console.log('TTS: speechSynthesis not supported');
       return;
+    }
+
+    // Detect WebView-like environments (Android WebView / in-app browsers)
+    try {
+      const ua = navigator.userAgent || '';
+      const isAndroidWebView = /;\s*wv\)/.test(ua) || /\bwv\b/.test(ua) || (/Android/.test(ua) && /Version\/[0-9.]+/.test(ua) && /Chrome\/[0-9.]+/.test(ua));
+      isWebViewRef.current = isAndroidWebView;
+      console.log('TTS: WebView detected =', isWebViewRef.current);
+    } catch {
+      isWebViewRef.current = false;
     }
 
     setIsSupported(true);
@@ -71,9 +82,11 @@ export const useNativeTTS = () => {
       .trim();
   }, []);
 
-  // Split text into chunks - very large chunks for continuous playback
-  const splitIntoChunks = useCallback((text: string, maxLength: number = 5000): string[] => {
-    // For text under 5k, don't chunk at all - speak as single unit
+  // Split text into chunks
+  // Note: In Android WebView, a single very long utterance often gets cut off mid-way.
+  // So we keep maxLength configurable and choose a WebView-safe value at runtime.
+  const splitIntoChunks = useCallback((text: string, maxLength: number = 1200): string[] => {
+    // For shorter text, don't chunk at all
     if (text.length <= maxLength) {
       return [text];
     }
@@ -193,7 +206,7 @@ export const useNativeTTS = () => {
         return;
       }
 
-      // Cancel any ongoing speech
+       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
@@ -202,8 +215,8 @@ export const useNativeTTS = () => {
       
       isCancelledRef.current = false;
       
-      // Small delay to ensure cancel completes
-      await new Promise(r => setTimeout(r, 50));
+       // Small delay to ensure cancel completes (WebView needs a bit more)
+       await new Promise(r => setTimeout(r, isWebViewRef.current ? 140 : 60));
 
       try {
         // Get voice
@@ -219,21 +232,26 @@ export const useNativeTTS = () => {
           voice = getBestVoice();
         }
 
-        // Use very large chunks (5k) for continuous playback
-        const chunks = splitIntoChunks(cleanText, 5000);
+         // Chunking strategy:
+         // - WebView: smaller chunks to prevent mid-speech cutoff
+         // - Regular browsers: allow large chunks (up to 5k) for smoother playback
+         const chunkMax = isWebViewRef.current ? 900 : 5000;
+         const chunks = splitIntoChunks(cleanText, chunkMax);
         chunksRef.current = chunks;
         currentChunkIndexRef.current = 0;
 
         console.log(`TTS: Speaking ${chunks.length} chunks`);
         setIsSpeaking(true);
 
-        // Start heartbeat to prevent Chrome/WebView from stopping (every 12 seconds)
-        heartbeatRef.current = setInterval(() => {
-          if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-            window.speechSynthesis.pause();
-            window.speechSynthesis.resume();
-          }
-        }, 12000);
+         // Start heartbeat only for WebView (prevents Chromium/WebView from stopping mid-utterance)
+         if (isWebViewRef.current) {
+           heartbeatRef.current = setInterval(() => {
+             if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+               window.speechSynthesis.pause();
+               window.speechSynthesis.resume();
+             }
+           }, 8000);
+         }
 
         // Speak each chunk sequentially with minimal gap
         for (let i = 0; i < chunks.length; i++) {
