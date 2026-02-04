@@ -110,16 +110,16 @@ interface StudyChatProps {
 const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = "CBSE" }: StudyChatProps) => {
   const { toast } = useToast();
   
-  // Subject and Chapter selection state
+  // Subject and Chapter selection state (optional - for reference only)
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedChapter, setSelectedChapter] = useState("");
-  const [showSubjectSelector, setShowSubjectSelector] = useState(true);
+  const [showSubjectSelector, setShowSubjectSelector] = useState(false); // Hidden by default - open learning
   
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
       role: "assistant",
-      content: "Bhai, pehle apna Subject aur Chapter select karo taaki main tumhe focused help de sakun! 📚",
+      content: "Namaste! Main aapka Study Buddy hun! 📚 Kuch bhi padhai se related pucho - Math, Science, Hindi, English, Social Studies - jo bhi doubt ho, main help karunga! Bolo, kya padhna hai aaj?",
       timestamp: new Date(),
     },
   ]);
