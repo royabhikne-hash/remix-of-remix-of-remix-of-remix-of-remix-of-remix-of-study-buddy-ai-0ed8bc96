@@ -451,14 +451,14 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let body: { studentId?: string; testMode?: boolean } = {};
+    let body: { studentId?: string; testMode?: boolean; previewOnly?: boolean } = {};
     try {
       body = await req.json();
     } catch {
       // No body provided
     }
 
-    console.log("Starting detailed report generation...", body.testMode ? "(Test Mode)" : "");
+    console.log("Starting detailed report generation...", body.testMode ? "(Test Mode)" : "", body.previewOnly ? "(Preview Only)" : "");
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
@@ -476,7 +476,7 @@ serve(async (req) => {
 
     console.log(`Found ${students?.length || 0} students`);
 
-    const reports: { studentName: string; sent: boolean; reportData?: DetailedReport }[] = [];
+  const reports: { studentName: string; sent: boolean; reportData?: DetailedReport; pdfUrl?: string | null }[] = [];
 
     for (const student of students || []) {
       const { data: sessions } = await supabase
@@ -637,18 +637,24 @@ serve(async (req) => {
 
       const messageContent = generateDetailedWhatsAppMessage(report);
       
-      // Upload PDF/HTML report to storage
-      const pdfUrl = await uploadPDFToStorage(supabase, report);
-      
-      // Add PDF link to message
-      let fullMessage = messageContent;
-      if (pdfUrl) {
-        fullMessage += `\n\n📄 *VIEW FULL REPORT:*\n${pdfUrl}`;
+      let sent = false;
+      let pdfUrl: string | null = null;
+
+      // Only send WhatsApp if not in preview mode
+      if (!body.previewOnly) {
+        // Upload PDF/HTML report to storage
+        pdfUrl = await uploadPDFToStorage(supabase, report);
+        
+        // Add PDF link to message
+        let fullMessage = messageContent;
+        if (pdfUrl) {
+          fullMessage += `\n\n📄 *VIEW FULL REPORT:*\n${pdfUrl}`;
+        }
+        
+        sent = await sendWhatsAppMessage(student.parent_whatsapp, fullMessage, pdfUrl || undefined);
       }
       
-      const sent = await sendWhatsAppMessage(student.parent_whatsapp, fullMessage, pdfUrl || undefined);
-      
-      reports.push({ studentName: student.full_name, sent, reportData: report });
+      reports.push({ studentName: student.full_name, sent, reportData: report, pdfUrl });
       
       await new Promise(resolve => setTimeout(resolve, 500));
     }

@@ -148,6 +148,15 @@ const AdminDashboard = () => {
    const [resettingSchoolPassword, setResettingSchoolPassword] = useState(false);
    const [generatedSchoolPassword, setGeneratedSchoolPassword] = useState<string | null>(null);
 
+  // Report preview state
+  const [reportPreviewDialog, setReportPreviewDialog] = useState<{
+    open: boolean;
+    student: Student | null;
+    reportUrl: string | null;
+    loading: boolean;
+    reportData: any;
+  } | null>(null);
+
   // Debounced search
   const debouncedSearch = useDebounce(searchQuery, 300);
   useEffect(() => {
@@ -567,6 +576,52 @@ const AdminDashboard = () => {
   const handleViewStudentReport = (student: Student) => {
     setSelectedStudent(student);
     setShowReportModal(true);
+  };
+
+  const handlePreviewReport = async (student: Student) => {
+    setReportPreviewDialog({
+      open: true,
+      student,
+      reportUrl: null,
+      loading: true,
+      reportData: null,
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke("send-weekly-report", {
+        body: { studentId: student.id, testMode: true, previewOnly: true },
+      });
+
+      if (error) throw error;
+
+      // Find report URL from the response
+      const reportUrl = data?.reports?.[0]?.reportData ? 
+        `https://cmvvomlrcvlhjchmbqts.supabase.co/storage/v1/object/public/student-photos/reports/report_${student.id}_preview.html` : null;
+
+      setReportPreviewDialog(prev => prev ? {
+        ...prev,
+        loading: false,
+        reportData: data?.reports?.[0]?.reportData || data?.reportData,
+        reportUrl: reportUrl,
+      } : null);
+    } catch (error) {
+      console.error("Error generating preview:", error);
+      toast({
+        title: "Preview Error",
+        description: "Could not generate report preview.",
+        variant: "destructive",
+      });
+      setReportPreviewDialog(null);
+    }
+  };
+
+  const handleConfirmSendReport = async () => {
+    if (!reportPreviewDialog?.student) return;
+    
+    const student = reportPreviewDialog.student;
+    setReportPreviewDialog(null);
+    
+    await handleSendReport(student.id, student.parent_whatsapp);
   };
 
   const handleLogout = () => {
@@ -1214,18 +1269,18 @@ const AdminDashboard = () => {
                     View Report
                   </Button>
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
-                    onClick={() => handleSendReport(student.id, student.parent_whatsapp)}
-                    disabled={sendingReportFor === student.id}
-                    className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                    onClick={() => handlePreviewReport(student)}
+                    disabled={reportPreviewDialog?.loading && reportPreviewDialog?.student?.id === student.id}
+                    className="text-primary"
                   >
-                    {sendingReportFor === student.id ? (
+                    {reportPreviewDialog?.loading && reportPreviewDialog?.student?.id === student.id ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <Send className="w-4 h-4 mr-2" />
+                      <Eye className="w-4 h-4 mr-2" />
                     )}
-                    Send Report
+                    Preview & Send
                   </Button>
                 </div>
               ))}
@@ -1410,6 +1465,133 @@ const AdminDashboard = () => {
            )}
          </DialogContent>
        </Dialog>
+
+      {/* Report Preview Dialog */}
+      <Dialog 
+        open={reportPreviewDialog?.open} 
+        onOpenChange={(open) => !open && setReportPreviewDialog(null)}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Report Preview
+            </DialogTitle>
+          </DialogHeader>
+          
+          {reportPreviewDialog?.loading ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Generating report preview...</p>
+            </div>
+          ) : reportPreviewDialog?.reportData ? (
+            <div className="space-y-4">
+              {/* Student Info */}
+              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-xl">
+                {reportPreviewDialog.student?.photo_url ? (
+                  <img 
+                    src={reportPreviewDialog.student.photo_url} 
+                    alt={reportPreviewDialog.student.full_name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold">
+                    {reportPreviewDialog.student?.full_name?.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold">{reportPreviewDialog.student?.full_name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {reportPreviewDialog.student?.class} • 📞 {reportPreviewDialog.student?.parent_whatsapp}
+                  </p>
+                </div>
+              </div>
+
+              {/* Grade Badge */}
+              <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl">
+                <div className="text-4xl font-bold text-primary">{reportPreviewDialog.reportData.grade}</div>
+                <div className="text-sm text-muted-foreground">{reportPreviewDialog.reportData.gradeLabel}</div>
+                <div className="text-xs mt-1">
+                  {reportPreviewDialog.reportData.trend === "improving" ? "📈 Improving" : 
+                   reportPreviewDialog.reportData.trend === "declining" ? "📉 Declining" : "➡️ Stable"}
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{reportPreviewDialog.reportData.totalSessions}</div>
+                  <div className="text-xs text-muted-foreground">Sessions</div>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{reportPreviewDialog.reportData.avgAccuracy}%</div>
+                  <div className="text-xs text-muted-foreground">Quiz Accuracy</div>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{reportPreviewDialog.reportData.daysStudied}/7</div>
+                  <div className="text-xs text-muted-foreground">Days Studied</div>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{reportPreviewDialog.reportData.currentStreak}🔥</div>
+                  <div className="text-xs text-muted-foreground">Streak</div>
+                </div>
+              </div>
+
+              {/* Daily Breakdown */}
+              {reportPreviewDialog.reportData.dailyBreakdown && (
+                <div className="space-y-2">
+                  <p className="font-semibold text-sm">📅 Daily Breakdown</p>
+                  <div className="space-y-1">
+                    {reportPreviewDialog.reportData.dailyBreakdown.map((day: any, i: number) => (
+                      <div key={i} className={`flex justify-between items-center p-2 rounded-lg text-xs ${day.sessions > 0 ? 'bg-accent/10' : 'bg-secondary/30'}`}>
+                        <span>{day.sessions > 0 ? '✅' : '❌'} {day.day} ({day.date})</span>
+                        <span className="text-muted-foreground">{day.sessions} sessions</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {reportPreviewDialog.reportData.recommendations?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="font-semibold text-sm">💡 AI Recommendations</p>
+                  <div className="space-y-1 text-xs">
+                    {reportPreviewDialog.reportData.recommendations.map((rec: string, i: number) => (
+                      <p key={i} className="p-2 bg-accent/10 rounded-lg">{rec}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setReportPreviewDialog(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmSendReport}
+                  disabled={sendingReportFor === reportPreviewDialog.student?.id}
+                  className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                >
+                  {sendingReportFor === reportPreviewDialog.student?.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Send to WhatsApp
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No report data available.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
