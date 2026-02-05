@@ -13,6 +13,7 @@ import TypingText from "@/components/TypingText";
 import { useNativeTTS } from "@/hooks/useNativeTTS";
 import VoiceSelector from "@/components/VoiceSelector";
 import SubjectChapterSelector from "@/components/SubjectChapterSelector";
+ import { BoardType } from "@/data/syllabusData";
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -1000,6 +1001,7 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
             </div>
             <SubjectChapterSelector
               studentClass={studentClass}
+              studentBoard={studentBoard as BoardType}
               selectedSubject={selectedSubject}
               selectedChapter={selectedChapter}
               onSubjectChange={handleSubjectChange}
