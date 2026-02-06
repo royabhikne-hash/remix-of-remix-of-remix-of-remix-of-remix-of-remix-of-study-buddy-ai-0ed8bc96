@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Phone number validation (Indian format)
-const phoneRegex = /^[6-9]\d{9}$/;
+// Phone number validation (Indian format - accepts 10 digits, with optional leading 0 or +91)
+const phoneRegex = /^(?:(?:\+91|91|0)?[6-9]\d{9})$/;
 
 // Name validation - allows letters, spaces, and common Indian name characters
 const nameRegex = /^[a-zA-Z\s\u0900-\u097F]+$/;
