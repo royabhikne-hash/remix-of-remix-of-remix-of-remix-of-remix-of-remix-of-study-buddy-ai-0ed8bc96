@@ -166,7 +166,16 @@ serve(async (req) => {
 
     // Get audio data as arrayBuffer and convert to base64
     const audioBuffer = await speechifyResponse.arrayBuffer();
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    const uint8Array = new Uint8Array(audioBuffer);
+    
+    // Convert to base64 in chunks to avoid stack overflow
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const audioBase64 = btoa(binaryString);
     
     console.log(`TTS: Generated ${audioBuffer.byteLength} bytes of audio`);
 
