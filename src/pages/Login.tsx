@@ -83,18 +83,23 @@ const Login = () => {
             description: language === 'en' ? "Invalid email or password. Please try again." : "गलत ईमेल या पासवर्ड।",
             variant: "destructive",
           });
+          return;
         } else if (error.message.includes("Email not confirmed")) {
           toast({
             title: language === 'en' ? "Email Not Verified" : "ईमेल वेरिफाई नहीं हुआ",
             description: language === 'en' ? "Please check your email and click the verification link." : "कृपया अपना ईमेल चेक करें और वेरिफिकेशन लिंक पर क्लिक करें।",
             variant: "destructive",
           });
+          return;
         } else {
           setShowAuthRepair(true);
-          throw error;
+          toast({
+            title: language === 'en' ? "Login Failed" : "लॉगिन फेल",
+            description: error.message || "Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
-        setIsLoading(false);
-        return;
       }
 
       // Check if student is approved by their school
@@ -116,7 +121,6 @@ const Login = () => {
           });
           // Sign out since not approved
           await supabase.auth.signOut();
-          setIsLoading(false);
           return;
         }
       }
