@@ -75,8 +75,9 @@ export const useSmartTTS = (studentId: string | null) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Native TTS as fallback
+  // Native TTS as fallback (prefers Android native when available)
   const nativeTTS = useNativeTTS();
+  const isAndroidNative = nativeTTS.useAndroidNative;
 
   // Fetch subscription status on mount
   const fetchUsageInfo = useCallback(async () => {
@@ -462,6 +463,7 @@ export const useSmartTTS = (studentId: string | null) => {
     refreshUsageInfo,
     getStatusMessage,
     isPremiumActive: state.usageInfo?.usingPremium ?? false,
+    isAndroidNative,
   };
 };
 

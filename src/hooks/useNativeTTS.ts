@@ -1,4 +1,15 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
+import {
+  isAndroidNativeTTSAvailable,
+  isAndroidEnvironment,
+  isWebView,
+  speakWithAndroidNative,
+  stopAndroidNativeTTS,
+  isAndroidNativeSpeaking,
+  sanitizeForTTS,
+  detectLanguage,
+  splitForNativeTTS,
+} from '@/lib/androidTTSBridge';
 
 interface TTSOptions {
   text: string;
@@ -10,37 +21,108 @@ interface TTSOptions {
 }
 
 /**
- * Robust Web Speech API TTS hook with chunking and Chrome bug workarounds
- * - Chunks long text to prevent 15-second WebView cutoff
- * - Uses pause/resume heartbeat to prevent Chrome from stopping
- * - Proper promise handling and voice selection
+ * Native TTS Hook - Android Native First, Web Speech API Fallback
+ * 
+ * Priority:
+ * 1. Android Native TTS (via JS bridge) - offline, free, low battery
+ * 2. Web Speech API - browser fallback with chunking & Chrome bug workarounds
  */
 export const useNativeTTS = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceName, setSelectedVoiceName] = useState<string | null>(null);
+  const [useAndroidNative, setUseAndroidNative] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<string[]>([]);
   const currentChunkIndexRef = useRef(0);
   const isCancelledRef = useRef(false);
   const isWebViewRef = useRef(false);
+  const androidNativeRef = useRef(false);
 
   useEffect(() => {
+    // Check Android native TTS first
+    const checkAndroidNative = () => {
+      const hasNative = isAndroidNativeTTSAvailable();
+      const isAndroid = isAndroidEnvironment();
+      const inWebView = isWebView();
+      
+      console.log(`TTS: Android=${isAndroid}, WebView=${inWebView}, NativeBridge=${hasNative}`);
+      
+      androidNativeRef.current = hasNative;
+      isWebViewRef.current = inWebView || isAndroid;
+      
+      if (hasNative) {
+        console.log('TTS: ✅ Android Native TTS available - will use native engine');
+        setUseAndroidNative(true);
+        setIsSupported(true);
+        return true;
+      }
+      
+      // Even without bridge, if Android WebView, mark it
+      if (isAndroid && inWebView) {
+        console.log('TTS: Android WebView detected but no native bridge - will try Web Speech API');
+      }
+      
+      return false;
+    };
+
+    // Try immediately
+    const hasNative = checkAndroidNative();
+    
+    // Retry for bridge availability (Android may inject it slightly late)
+    if (!hasNative && isAndroidEnvironment()) {
+      const retries = [200, 500, 1000, 2000, 3000];
+      const timers = retries.map(delay =>
+        setTimeout(() => {
+          if (!androidNativeRef.current && isAndroidNativeTTSAvailable()) {
+            console.log(`TTS: Android native bridge found after ${delay}ms`);
+            androidNativeRef.current = true;
+            setUseAndroidNative(true);
+            setIsSupported(true);
+          }
+        }, delay)
+      );
+      // Cleanup timers on unmount
+      const cleanup1 = () => timers.forEach(clearTimeout);
+      
+      // Also setup Web Speech API as fallback
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        setIsSupported(true);
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            console.log('TTS: Web Speech loaded', voices.length, 'voices');
+            setAvailableVoices(voices);
+          }
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+
+        // WebView voice retry
+        const voiceTimers = [300, 800, 1500, 3000, 5000].map(delay =>
+          setTimeout(() => {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) setAvailableVoices(prev => prev.length === 0 ? voices : prev);
+          }, delay)
+        );
+        
+        return () => {
+          cleanup1();
+          voiceTimers.forEach(clearTimeout);
+          window.speechSynthesis.cancel();
+          if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        };
+      }
+      
+      return cleanup1;
+    }
+
+    // Non-Android: setup Web Speech API
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       console.log('TTS: speechSynthesis not supported');
       return;
-    }
-
-    // Detect WebView-like environments (Android WebView / in-app browsers)
-    try {
-      const ua = navigator.userAgent || '';
-      const isAndroidWebView = /;\s*wv\)/.test(ua) || /\bwv\b/.test(ua) || (/Android/.test(ua) && /Version\/[0-9.]+/.test(ua) && /Chrome\/[0-9.]+/.test(ua));
-      isWebViewRef.current = isAndroidWebView;
-      console.log('TTS: WebView detected =', isWebViewRef.current);
-    } catch {
-      isWebViewRef.current = false;
     }
 
     setIsSupported(true);
@@ -48,67 +130,24 @@ export const useNativeTTS = () => {
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
       console.log('TTS: Loaded', voices.length, 'voices');
-      if (voices.length > 0) {
-        setAvailableVoices(voices);
-      }
+      if (voices.length > 0) setAvailableVoices(voices);
     };
     
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    // WebView fix: voices often load late, retry aggressively
-    if (isWebViewRef.current) {
-      const retryIntervals = [300, 800, 1500, 3000, 5000];
-      const timers = retryIntervals.map(delay =>
-        setTimeout(() => {
-          const voices = window.speechSynthesis.getVoices();
-          if (voices.length > 0 && availableVoices.length === 0) {
-            console.log(`TTS: WebView voice retry loaded ${voices.length} voices after ${delay}ms`);
-            setAvailableVoices(voices);
-          }
-        }, delay)
-      );
-      return () => {
-        timers.forEach(clearTimeout);
-        window.speechSynthesis.cancel();
-        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-      };
-    }
     
     return () => {
       window.speechSynthesis.cancel();
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-      }
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, []);
 
   const sanitizeText = useCallback((text: string): string => {
-    return text
-      .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
-      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
-      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
-      .replace(/[\u{2600}-\u{26FF}]/gu, '')
-      .replace(/[\u{2700}-\u{27BF}]/gu, '')
-      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
-      .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/`(.*?)`/g, '$1')
-      .replace(/#{1,6}\s/g, '')
-      .replace(/\n+/g, '. ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return sanitizeForTTS(text);
   }, []);
 
-  // Split text into chunks
-  // Note: In Android WebView, a single very long utterance often gets cut off mid-way.
-  // So we keep maxLength configurable and choose a WebView-safe value at runtime.
   const splitIntoChunks = useCallback((text: string, maxLength: number = 1200): string[] => {
-    // For shorter text, don't chunk at all
-    if (text.length <= maxLength) {
-      return [text];
-    }
+    if (text.length <= maxLength) return [text];
     
     const sentences = text.split(/(?<=[।.!?])\s+/);
     const chunks: string[] = [];
@@ -130,12 +169,9 @@ export const useNativeTTS = () => {
   const getBestVoice = useCallback((): SpeechSynthesisVoice | null => {
     const voices = availableVoices.length > 0 
       ? availableVoices 
-      : window.speechSynthesis.getVoices();
+      : (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis.getVoices() : []);
     
     if (voices.length === 0) return null;
-
-    const hindiVoices = voices.filter(v => v.lang.startsWith('hi') || v.lang === 'en-IN');
-    console.log('TTS: Hindi/Indian voices:', hindiVoices.map(v => `${v.name} (${v.lang})`).join(', ') || 'None');
 
     const hindiMaleNames = [
       'google हिन्दी', 'google hindi', 'madhur', 'hemant', 'prabhat', 
@@ -149,40 +185,34 @@ export const useNativeTTS = () => {
                      (!nameLower.includes('female') && !nameLower.includes('swara') && !nameLower.includes('lekha'));
       return isHindi && isMale;
     });
-    
     if (hindiMaleVoice) return hindiMaleVoice;
 
     const hindiVoice = voices.find(v => v.lang === 'hi-IN');
     if (hindiVoice) return hindiVoice;
-
-    const hindiAnyLocale = voices.find(v => v.lang.startsWith('hi'));
-    if (hindiAnyLocale) return hindiAnyLocale;
+    const hindiAny = voices.find(v => v.lang.startsWith('hi'));
+    if (hindiAny) return hindiAny;
     
     const indianEnglishMale = voices.find(v => {
-      const nameLower = v.name.toLowerCase();
-      return v.lang === 'en-IN' && 
-             (nameLower.includes('ravi') || nameLower.includes('male') || 
-              (!nameLower.includes('female') && !nameLower.includes('heera')));
+      const n = v.name.toLowerCase();
+      return v.lang === 'en-IN' && (n.includes('ravi') || n.includes('male') || (!n.includes('female') && !n.includes('heera')));
     });
     if (indianEnglishMale) return indianEnglishMale;
 
     const indianEnglish = voices.find(v => v.lang === 'en-IN');
     if (indianEnglish) return indianEnglish;
-    
-    const englishVoice = voices.find(v => v.lang.startsWith('en'));
-    if (englishVoice) return englishVoice;
+    const english = voices.find(v => v.lang.startsWith('en'));
+    if (english) return english;
     
     return voices[0] || null;
   }, [availableVoices]);
 
-  // Speak a single chunk with auto-retry on early stop
+  // Speak a single chunk using Web Speech API
   const speakChunk = useCallback((
     text: string, 
     voice: SpeechSynthesisVoice | null, 
     rate: number, 
     pitch: number, 
     volume: number,
-    retryWithSmallerChunks: boolean = true
   ): Promise<{ completed: boolean; stoppedEarly: boolean }> => {
     return new Promise((resolve) => {
       if (isCancelledRef.current) {
@@ -207,28 +237,23 @@ export const useNativeTTS = () => {
       utterance.pitch = Math.max(0, Math.min(2, pitch));
       utterance.volume = Math.max(0, Math.min(1, volume));
 
-      // WebView safety: timeout if speech never fires onend/onerror
       let settled = false;
       const safetyTimeout = setTimeout(() => {
         if (!settled) {
           settled = true;
-          console.log('TTS: Safety timeout - speech may have failed silently');
           resolve({ completed: false, stoppedEarly: true });
         }
-      }, Math.max(15000, text.length * 100)); // generous timeout based on text length
+      }, Math.max(15000, text.length * 100));
 
       utterance.onend = () => {
         if (settled) return;
         settled = true;
         clearTimeout(safetyTimeout);
         const elapsed = Date.now() - startTime;
-        const textLengthThreshold = 100;
-        const stoppedEarly = text.length > textLengthThreshold && elapsed < minExpectedDuration;
-        
+        const stoppedEarly = text.length > 100 && elapsed < minExpectedDuration;
         if (stoppedEarly) {
-          console.log(`TTS: Possible early stop detected (${elapsed}ms for ${text.length} chars)`);
+          console.log(`TTS: Possible early stop (${elapsed}ms for ${text.length} chars)`);
         }
-        
         resolve({ completed: true, stoppedEarly });
       };
 
@@ -240,7 +265,6 @@ export const useNativeTTS = () => {
         resolve({ completed: false, stoppedEarly: false });
       };
 
-      // WebView fix: cancel before speaking to clear any stuck state
       if (isWebViewRef.current) {
         window.speechSynthesis.cancel();
       }
@@ -251,56 +275,85 @@ export const useNativeTTS = () => {
         if (!settled) {
           settled = true;
           clearTimeout(safetyTimeout);
-          console.error('TTS: speak() threw error:', e);
           resolve({ completed: false, stoppedEarly: false });
         }
       }
 
-      // WebView fix: check if speaking actually started after a delay
+      // WebView retry if speech never started
       if (isWebViewRef.current) {
         setTimeout(() => {
           if (!settled && !window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-            console.log('TTS: WebView - speech never started, retrying...');
-            try {
-              window.speechSynthesis.speak(utterance);
-            } catch {
-              // ignore retry errors
-            }
+            try { window.speechSynthesis.speak(utterance); } catch { /* ignore */ }
           }
         }, 300);
       }
     });
   }, []);
 
+  // ============= MAIN SPEAK FUNCTION =============
   const speak = useCallback((options: TTSOptions): Promise<void> => {
     const { text, rate = 0.9, pitch = 1.0, volume = 1.0, voiceName } = options;
     
     return new Promise(async (resolve) => {
-      if (!isSupported) {
-        resolve();
-        return;
-      }
+      if (!isSupported) { resolve(); return; }
 
       const cleanText = sanitizeText(text);
-      if (!cleanText) {
+      if (!cleanText) { resolve(); return; }
+
+      // Cancel any ongoing speech
+      stop();
+      isCancelledRef.current = false;
+
+      // Small delay to ensure cancel completes
+      await new Promise(r => setTimeout(r, isWebViewRef.current ? 140 : 60));
+
+      // ===== ANDROID NATIVE TTS =====
+      if (androidNativeRef.current && isAndroidNativeTTSAvailable()) {
+        console.log('TTS: 🤖 Using Android Native Engine');
+        setIsSpeaking(true);
+        
+        try {
+          const detectedLang = detectLanguage(cleanText);
+          const chunks = splitForNativeTTS(cleanText, 800);
+          
+          console.log(`TTS Native: ${chunks.length} chunks, lang=${detectedLang}, speed=${rate}`);
+          
+          for (let i = 0; i < chunks.length; i++) {
+            if (isCancelledRef.current) break;
+            
+            const chunkLang = detectLanguage(chunks[i]);
+            const result = await speakWithAndroidNative(chunks[i], rate, chunkLang);
+            
+            if (!result.success) {
+              console.warn(`TTS Native: Chunk ${i + 1} failed, falling back to Web Speech`);
+              // Fallback to Web Speech for remaining chunks
+              break;
+            }
+            
+            // Small gap between chunks
+            if (i < chunks.length - 1 && !isCancelledRef.current) {
+              await new Promise(r => setTimeout(r, 50));
+            }
+          }
+        } catch (error) {
+          console.error('TTS Native: Error:', error);
+        } finally {
+          setIsSpeaking(false);
+          resolve();
+        }
+        return;
+      }
+
+      // ===== WEB SPEECH API FALLBACK =====
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        console.error('TTS: No speech engine available');
         resolve();
         return;
       }
 
-       // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-        heartbeatRef.current = null;
-      }
-      
-      isCancelledRef.current = false;
-      
-       // Small delay to ensure cancel completes (WebView needs a bit more)
-       await new Promise(r => setTimeout(r, isWebViewRef.current ? 140 : 60));
+      console.log('TTS: 🌐 Using Web Speech API');
 
       try {
-        // Get voice
         const targetVoiceName = voiceName || selectedVoiceName;
         let voice: SpeechSynthesisVoice | null = null;
         
@@ -308,96 +361,70 @@ export const useNativeTTS = () => {
           const voices = window.speechSynthesis.getVoices();
           voice = voices.find(v => v.name === targetVoiceName) || null;
         }
-        
-        if (!voice) {
-          voice = getBestVoice();
-        }
+        if (!voice) voice = getBestVoice();
 
-         // Chunking strategy:
-         // - WebView: smaller chunks to prevent mid-speech cutoff
-         // - Regular browsers: allow large chunks (up to 5k) for smoother playback
-         const chunkMax = isWebViewRef.current ? 900 : 5000;
-         const chunks = splitIntoChunks(cleanText, chunkMax);
+        const chunkMax = isWebViewRef.current ? 900 : 5000;
+        const chunks = splitIntoChunks(cleanText, chunkMax);
         chunksRef.current = chunks;
         currentChunkIndexRef.current = 0;
 
-        console.log(`TTS: Speaking ${chunks.length} chunks`);
+        console.log(`TTS Web: ${chunks.length} chunks`);
         setIsSpeaking(true);
 
-         // Start heartbeat only for WebView (prevents Chromium/WebView from stopping mid-utterance)
-         if (isWebViewRef.current) {
-           heartbeatRef.current = setInterval(() => {
-             if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-               window.speechSynthesis.pause();
-               window.speechSynthesis.resume();
-             }
-           }, 8000);
-         }
+        // WebView heartbeat
+        if (isWebViewRef.current) {
+          heartbeatRef.current = setInterval(() => {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+              window.speechSynthesis.pause();
+              window.speechSynthesis.resume();
+            }
+          }, 8000);
+        }
 
-        // Speak each chunk sequentially with auto-retry on early stop
         let consecutiveEarlyStops = 0;
-        let currentChunkSize = chunkMax;
         
         for (let i = 0; i < chunks.length; i++) {
           if (isCancelledRef.current) break;
-          
           currentChunkIndexRef.current = i;
           const chunkText = chunks[i];
           
-          // If we've had early stops, use smaller sub-chunks
           if (consecutiveEarlyStops >= 1 && chunkText.length > 200) {
-            console.log(`TTS: Using smaller sub-chunks due to early stops`);
             const subChunks = splitIntoChunks(chunkText, 200);
-            
             for (const subChunk of subChunks) {
               if (isCancelledRef.current) break;
-              
-              const result = await speakChunk(subChunk, voice, rate, pitch, volume, false);
-              
+              const result = await speakChunk(subChunk, voice, rate, pitch, volume);
               if (result.stoppedEarly) {
-                // Cancel and retry with even smaller chunk
                 window.speechSynthesis.cancel();
                 await new Promise(r => setTimeout(r, 100));
-                await speakChunk(subChunk, voice, rate, pitch, volume, false);
+                await speakChunk(subChunk, voice, rate, pitch, volume);
               }
-              
-              if (!isCancelledRef.current) {
-                await new Promise(r => setTimeout(r, 50));
-              }
+              if (!isCancelledRef.current) await new Promise(r => setTimeout(r, 50));
             }
           } else {
-            const result = await speakChunk(chunkText, voice, rate, pitch, volume, true);
-            
+            const result = await speakChunk(chunkText, voice, rate, pitch, volume);
             if (result.stoppedEarly) {
               consecutiveEarlyStops++;
-              console.log(`TTS: Early stop #${consecutiveEarlyStops}, will retry remaining text with smaller chunks`);
-              
-              // Re-chunk remaining text with smaller size and retry current chunk
               if (consecutiveEarlyStops <= 2) {
                 window.speechSynthesis.cancel();
                 await new Promise(r => setTimeout(r, 100));
-                
-                // Retry current chunk with smaller sub-chunks
                 const subChunks = splitIntoChunks(chunkText, 200);
                 for (const subChunk of subChunks) {
                   if (isCancelledRef.current) break;
-                  await speakChunk(subChunk, voice, rate, pitch, volume, false);
+                  await speakChunk(subChunk, voice, rate, pitch, volume);
                   await new Promise(r => setTimeout(r, 50));
                 }
               }
             } else {
-              consecutiveEarlyStops = 0; // Reset on successful chunk
+              consecutiveEarlyStops = 0;
             }
           }
           
-          // Minimal gap between chunks
           if (i < chunks.length - 1 && !isCancelledRef.current) {
             await new Promise(r => setTimeout(r, 30));
           }
         }
-
       } catch (error) {
-        console.error('TTS: Exception during speak:', error);
+        console.error('TTS Web: Exception:', error);
       } finally {
         if (heartbeatRef.current) {
           clearInterval(heartbeatRef.current);
@@ -413,6 +440,10 @@ export const useNativeTTS = () => {
   const stop = useCallback(() => {
     isCancelledRef.current = true;
     
+    // Stop Android native TTS
+    stopAndroidNativeTTS();
+    
+    // Stop Web Speech API
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -431,12 +462,10 @@ export const useNativeTTS = () => {
   const getHindiVoices = useCallback((): SpeechSynthesisVoice[] => {
     const voices = availableVoices.length > 0 
       ? availableVoices 
-      : window.speechSynthesis.getVoices();
+      : (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis.getVoices() : []);
     
     return voices.filter(v => 
-      v.lang.startsWith('hi') || 
-      v.lang === 'en-IN' || 
-      v.lang.startsWith('en')
+      v.lang.startsWith('hi') || v.lang === 'en-IN' || v.lang.startsWith('en')
     );
   }, [availableVoices]);
 
@@ -445,12 +474,13 @@ export const useNativeTTS = () => {
     stop,
     isSpeaking,
     isSupported,
-    isNative: false,
+    isNative: useAndroidNative, // true when using Android native engine
     availableVoices,
     sanitizeText,
     selectedVoiceName,
     setSelectedVoiceName,
     getHindiVoices,
+    useAndroidNative,
   };
 };
 

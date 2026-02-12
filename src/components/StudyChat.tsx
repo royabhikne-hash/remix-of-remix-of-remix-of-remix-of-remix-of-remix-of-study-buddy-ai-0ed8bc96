@@ -149,6 +149,7 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
     usageInfo: ttsUsageInfo,
     getStatusMessage: getTTSStatusMessage,
     isPremiumActive,
+    isAndroidNative,
   } = useSmartTTS(studentId || null);
   
   // Quiz mode state
@@ -1083,9 +1084,11 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
                             <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold ${
                               isPremiumActive 
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
-                                : 'bg-muted text-muted-foreground'
+                                : isAndroidNative
+                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                                  : 'bg-muted text-muted-foreground'
                             }`}>
-                              {isPremiumActive ? '✨ Pro' : 'Web'}
+                              {isPremiumActive ? '✨ Pro' : isAndroidNative ? '📱 Native' : 'Web'}
                             </span>
                           </>
                         ) : (
